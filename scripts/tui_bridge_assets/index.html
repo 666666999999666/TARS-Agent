@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TARS · ConPTY QA</title><link rel="stylesheet" href="/vendor/xterm.css">
+<style>html,body{height:100%;margin:0;background:#101827;color:#f2f5fb;font:14px system-ui,sans-serif}body{display:flex;flex-direction:column}header{display:flex;align-items:center;gap:18px;padding:10px 18px;background:#1b2940;flex:none}strong{font-size:15px}#status{color:#c7d7ee;flex:1}button{background:#cbe0ff;color:#10223b;border:1px solid #a4c5f4;border-radius:5px;padding:6px 12px;cursor:pointer}button:disabled{opacity:.45;cursor:default}#terminal{flex:1;min-height:0;padding:8px;overflow:hidden}footer{font-size:12px;padding:6px 18px;color:#b6c7df;background:#1b2940}#error{color:#ffcaca}</style>
+</head><body><header><strong>TARS 真实 TUI · Windows ConPTY</strong><span id="status">连接中</span><span id="error"></span><button id="restart" disabled>重启同一 TUI</button></header>
+<div id="terminal"></div><footer>xterm.js 替代终端渲染器 · Ctrl+X 停止任务 · Ctrl+Q 退出 TUI，后台 Core 与会话保留 · 此桥只运行固定 TUI，不提供通用 shell</footer>
+<script type="module" src="/bridge.js"></script></body></html>

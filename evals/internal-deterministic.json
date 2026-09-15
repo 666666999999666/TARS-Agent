@@ -1,0 +1,100 @@
+{
+  "schema_version": "1.0",
+  "suite_id": "tars-zero-model-runtime-v1",
+  "name": "TARS-Agent zero-model deterministic runtime evidence",
+  "description": "Twelve fixed allowlisted pytest runtime cases. No LLM or arbitrary manifest command is executed.",
+  "adapter": "internal",
+  "execution_mode": "runtime_cases",
+  "model_config_ref": {
+    "source": "not_used",
+    "reference": "zero_model_runtime_suite"
+  },
+  "default_repetitions": 1,
+  "sandbox_mode": "required",
+  "tasks": [
+    {
+      "id": "normal-read-write",
+      "goal": "Verify normal workspace-sandbox write and read behavior.",
+      "pytest_node_id": "tests/unit/test_eval_runtime_cases.py::test_runtime_case_normal_read_write",
+      "cleanup_assertion": "pytest tmp_path is released after the case process exits",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "path-escape",
+      "goal": "Verify absolute paths and parent traversal are rejected.",
+      "pytest_node_id": "tests/unit/test_sandbox_runtime.py::test_resolve_rejects_absolute_and_parent_escape",
+      "cleanup_assertion": "no path outside the temporary workspace is created",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "symlink-escape",
+      "goal": "Verify symlink and junction escape is rejected where the platform supports it.",
+      "pytest_node_id": "tests/unit/test_sandbox_runtime.py::test_resolve_rejects_symlink_escape",
+      "cleanup_assertion": "external target remains untouched and pytest tmp_path is released",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "permission-refusal",
+      "goal": "Verify wrong-session and invalid permission decisions cannot resolve a request.",
+      "pytest_node_id": "tests/unit/test_permission_manager.py::test_wrong_session_or_invalid_decision_does_not_resolve",
+      "cleanup_assertion": "pending permission task is resolved only by the valid scoped decision",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "sandbox-unavailable",
+      "goal": "Verify unavailable sandbox fails closed and starts no host process.",
+      "pytest_node_id": "tests/unit/test_sandbox_runtime.py::test_unavailable_sandbox_denial_starts_no_host_process",
+      "cleanup_assertion": "host runtime request list remains empty",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "required-no-host-fallback",
+      "goal": "Verify required sandbox policy cannot fall back to the host.",
+      "pytest_node_id": "tests/unit/test_sandbox_runtime.py::test_required_sandbox_disables_host_fallback",
+      "cleanup_assertion": "no host process starts when required sandbox is unavailable",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "bash-timeout-cleanup",
+      "goal": "Verify a timed-out Bash invocation cannot leave a child process that writes a delayed marker.",
+      "pytest_node_id": "tests/unit/test_eval_runtime_cases.py::test_runtime_case_bash_timeout_cleans_child_process",
+      "cleanup_assertion": "timed-out bash child cannot write a delayed marker and run cleanup is recorded",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "idempotent-message",
+      "goal": "Verify duplicate client_message_id submissions reuse one durable run.",
+      "pytest_node_id": "tests/unit/test_runtime_service.py::test_submit_returns_before_execution_and_deduplicates_message_id",
+      "cleanup_assertion": "runtime service closes and the single run reaches a terminal state",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "daemon-crash-recovery",
+      "goal": "Verify restart recovery marks interrupted daemon runs terminal.",
+      "pytest_node_id": "tests/integration/test_daemon_crash_recovery.py::test_hard_kill_marks_run_interrupted_without_replaying_side_effect",
+      "cleanup_assertion": "hard-killed daemon is reaped and restarted run is marked interrupted without replay",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "subagent-cleanup",
+      "goal": "Verify daemon shutdown cancels and persists all background subagents.",
+      "pytest_node_id": "tests/integration/test_daemon_crash_recovery.py::test_hard_kill_and_restart_interrupts_active_subagent_without_resuming_it",
+      "cleanup_assertion": "hard-killed daemon and active subagent are reaped and not resumed after restart",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "compact-transaction",
+      "goal": "Verify manual compaction commits context and audit evidence transactionally.",
+      "pytest_node_id": "tests/unit/test_runtime_service.py::test_manual_compaction_is_transactional_and_auditable",
+      "cleanup_assertion": "runtime service and persistence resources close after the transaction",
+      "grader": {"kind": "pytest"}
+    },
+    {
+      "id": "mcp-invalid-result",
+      "goal": "Verify unsupported binary MCP content is omitted from model context.",
+      "pytest_node_id": "tests/unit/test_mcp_client_v2.py::test_binary_content_is_omitted_from_context",
+      "cleanup_assertion": "fake MCP client contains no pending transport work",
+      "grader": {"kind": "pytest"}
+    }
+  ]
+}

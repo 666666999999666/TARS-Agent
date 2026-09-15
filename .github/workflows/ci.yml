@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Python 3.12 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install uv and Python 3.12
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.8"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install locked dependencies
+        run: uv sync --locked --group qa --group security
+
+      - name: Ruff
+        run: uv run --no-sync python scripts/qa.py quick
+
+      - name: Mypy strict
+        run: uv run --no-sync mypy src
+
+      - name: Unit tests
+        run: uv run --no-sync python scripts/qa.py coverage
+
+      - name: Build sandbox image (Ubuntu)
+        if: runner.os == 'Linux'
+        run: docker build --tag tars-agent-sandbox:0.8.0 .
+
+      - name: Real Docker sandbox E2E (Ubuntu)
+        if: runner.os == 'Linux'
+        env:
+          TARS_REQUIRE_DOCKER_E2E: "1"
+        run: uv run --no-sync pytest tests/integration/test_docker_sandbox_e2e.py -v
+
+      - name: Assert and remove orphaned TARS-Agent containers
+        if: runner.os == 'Linux' && always()
+        run: |
+          ids="$(docker ps -aq --filter label=com.tars-agent.sandbox=true)"
+          if [ -n "$ids" ]; then
+            docker rm -f $ids
+            echo "TARS-Agent sandbox containers were orphaned."
+            exit 1
+          fi
+
+      - name: Offline integration tests
+        run: uv run --no-sync pytest tests/integration -m "not integration and not docker" -v
+
+      - name: Verify generated wire protocol
+        run: uv run --no-sync python scripts/gen_protocol_doc.py --check
+
+      - name: Verify persistence and Web adapter boundaries
+        run: uv run --no-sync python scripts/check_architecture.py
+
+      - name: Build wheel and source distribution
+        run: uv run --no-sync python scripts/qa.py build
+
+      - name: Smoke-test isolated wheel install
+        shell: pwsh
+        run: |
+          $wheel = (Get-ChildItem -LiteralPath build/qa/dist -Filter '*.whl' |
+            Select-Object -First 1).FullName
+          if (-not $wheel) { throw 'Built wheel was not found.' }
+          uv run --isolated --no-project --with $wheel `
+            python -c "import importlib.resources as r; import tars_agent; assert tars_agent.__version__ == '0.8.0'; assert r.files('tars_agent.web').joinpath('static/index.html').is_file()"
+          uv run --isolated --no-project --with $wheel `
+            python scripts/smoke_installed_web.py
+
+  web-e2e:
+    name: Ubuntu Core -> FastAPI -> SSE -> React
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install uv and Python 3.12
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.8"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install locked Python dependencies
+        run: uv sync --locked --group qa --group security
+
+      - name: Install Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install locked Web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Audit Web dependencies
+        working-directory: web
+        run: npm audit --audit-level=high
+
+      - name: Type-check and build Web assets
+        working-directory: web
+        run: |
+          npm run typecheck
+          npm run build
+
+      - name: Verify committed Web assets are current
+        run: git diff --exit-code -- src/tars_agent/web/static
+
+      - name: Install Chromium runtime
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run one real cross-process browser journey
+        run: uv run --no-sync python scripts/run_web_e2e.py

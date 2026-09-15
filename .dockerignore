@@ -1,0 +1,11 @@
+.git
+.github
+.venv
+dist
+build
+tests
+docs
+*.pyc
+__pycache__
+.env*
+.kama
