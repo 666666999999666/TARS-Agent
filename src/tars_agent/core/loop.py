@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from tars_agent.core.bus.events import StepFinishedEvent, StepStartedEvent
+from tars_agent.core.compact.budget import ContextBudget, ContextBudgetError
 from tars_agent.core.context import ExecutionContext
 from tars_agent.core.events.bus import EventBus
 from tars_agent.core.llm.base import LLMProvider
@@ -52,6 +53,7 @@ class AgentLoop:
         session_id: str = "",
         workspace_root: Path | None = None,
         defer_compaction_publish: bool = False,
+        context_budget: ContextBudget | None = None,
     ) -> None:
         self._provider = provider
         self._registry = registry
@@ -62,9 +64,20 @@ class AgentLoop:
         self._session_id = session_id
         self._workspace_root = (workspace_root or Path.cwd()).expanduser().resolve(strict=True)
         self._defer_compaction_publish = defer_compaction_publish
+        self._context_budget = context_budget or ContextBudget()
 
     # 驱动 plan→act→observe 循环直到上下文终止；CancelledError 向上传播
     async def run(self, context: ExecutionContext) -> None:
+        if context.is_done():
+            return
+        current_start = context.current_input_start()
+        system = context.system_prompt(
+            "You are a helpful AI assistant. "
+            "Use the available tools to complete the user's goal. "
+            "When the goal is fully achieved, respond with a final answer "
+            "and do not call any more tools."
+        )
+        schemas = self._registry.tool_schemas()
         while not context.is_done():
             context.step += 1
             await self._bus.publish(
@@ -73,19 +86,22 @@ class AgentLoop:
 
             # [plan] call LLM — API errors terminate the run
             try:
+                request_messages = self._context_budget.select(
+                    context.messages, current_start, system, schemas,
+                )
                 response = await self._provider.chat(
-                    messages=context.messages,
-                    tool_schemas=self._registry.tool_schemas(),
+                    messages=request_messages,
+                    tool_schemas=schemas,
                     bus=self._bus,
                     run_id=context.run_id,
                     step=context.step,
-                    system=context.system_prompt(
-                        "You are a helpful AI assistant. "
-                        "Use the available tools to complete the user's goal. "
-                        "When the goal is fully achieved, respond with a final answer "
-                        "and do not call any more tools."
-                    ),
+                    system=system,
                 )
+            except ContextBudgetError as exc:
+                context.mark_failed(str(exc))
+                context.result = "上下文不足或工具消息不完整，模型请求未发送。" + str(exc)
+                log.warning("run_id=%s %s", context.run_id, exc)
+                break
             except asyncio.CancelledError:
                 context.mark_failed("cancelled")
                 raise
@@ -183,8 +199,16 @@ class AgentLoop:
             elif context.step >= context.max_steps:
                 context.mark_failed("exceeded_max_steps")
 
-            # 工具结果追加完毕（messages 末尾为 user）后检查压缩，仅在 run 继续时触发
-            # 此时压缩结果 [user_summary, assistant_ack] 对下一次 LLM 调用是合法输入
+            # Check newly-added results before any further model request, including summaries.
+            if not context.is_done():
+                try:
+                    self._context_budget.select(context.messages, current_start, system, schemas)
+                except ContextBudgetError as exc:
+                    context.mark_failed(str(exc))
+                    context.result = "上下文不足或工具消息不完整，后续模型请求未发送。" + str(exc)
+                    log.warning("run_id=%s %s", context.run_id, exc)
+
+            # Compaction may replace the transcript, but cannot replace the current input.
             if (
                 not context.is_done()
                 and response.stop_reason == "tool_use"
@@ -193,11 +217,16 @@ class AgentLoop:
                 and response.usage is not None
                 and response.usage.context_pct >= self._compact_threshold
             ):
-                await self._compactor.compact(
-                    context,
-                    self._provider,
-                    publish=not self._defer_compaction_publish,
-                )
+                try:
+                    compacted = await self._compactor.compact(
+                        context, self._provider, publish=not self._defer_compaction_publish,
+                    )
+                except ContextBudgetError as exc:
+                    # The ordinary request can still use a bounded recent projection.
+                    log.warning("summary request not sent run_id=%s %s", context.run_id, exc)
+                else:
+                    if compacted is not None:
+                        current_start = context.current_input_start()
 
             await self._bus.publish(
                 StepFinishedEvent(run_id=context.run_id, step=context.step, ts=_now())

@@ -30,7 +30,15 @@ from tars_agent.core.bus.events import (
     ToolCallStartedEvent,
     ToolExecutionStartedEvent,
 )
+from tars_agent.core.compact.budget import (
+    ContextBudget,
+    ContextBudgetError,
+    is_user_input,
+    message_estimate,
+    validate_tool_pairs,
+)
 from tars_agent.core.compact.compactor import CompactionResult, Compactor
+from tars_agent.core.config import LlmConfig
 from tars_agent.core.events.bus import EventBus
 from tars_agent.core.events.writer import EventWriter
 from tars_agent.core.llm.base import LLMProvider
@@ -143,6 +151,7 @@ class RuntimeService:
         subagent_registry: BackgroundTaskRegistry | None = None,
         tool_runtime: RuntimeRouter | None = None,
         compaction_provider_factory: Callable[[], LLMProvider] | None = None,
+        llm_config: LlmConfig | None = None,
     ) -> None:
         self._database = database
         self._runner_factory = runner_factory
@@ -163,6 +172,7 @@ class RuntimeService:
         self._cancel_pending: dict[str, set[str]] = {}
         self._compaction_provider_factory = compaction_provider_factory
         self._compaction_provider: LLMProvider | None = None
+        self._llm_config = llm_config or LlmConfig()
         self._bus.subscribe(self._observe_tool_event)
         if subagent_registry is not None:
             subagent_registry.set_cleanup_pending_handler(self._request_failed_cleanup)
@@ -378,9 +388,12 @@ class RuntimeService:
 
     async def _execute_run(self, run_id: str) -> None:
         try:
-            run, session, turn, history = await self._begin_run(run_id)
+            run, session, turn, history, history_complete = await self._begin_run(run_id)
         except asyncio.CancelledError:
             await self._finalize_without_outcome(run_id, "cancelled", "cancelled")
+            return
+        except ContextBudgetError as exc:
+            await self._finalize_without_outcome(run_id, "failed", str(exc))
             return
         except Exception:
             log.exception("run preparation failed run_id=%s", run_id)
@@ -406,6 +419,7 @@ class RuntimeService:
                 session_id=session.id,
                 workspace_root=Path(session.workspace_root or Path.cwd()),
                 history=history,
+                history_complete=history_complete,
                 artifact_store=self._artifact_store,
                 session_notes=self._artifact_store.read_notes(session.id),
                 system_prompt_override=self._optional_string(options.get("system_prompt_override")),
@@ -436,7 +450,7 @@ class RuntimeService:
     async def _begin_run(
         self,
         run_id: str,
-    ) -> tuple[RunRecord, SessionRecord, TurnRecord, list[dict[str, Any]]]:
+    ) -> tuple[RunRecord, SessionRecord, TurnRecord, list[dict[str, Any]], bool]:
         now = _now()
         async with self._database.transaction() as db_session:
             repository = StateRepository(db_session)
@@ -454,13 +468,49 @@ class RuntimeService:
             run.updated_at = now
             turn.status = "running"
             turn.updated_at = now
-            committed = await repository.list_messages(session.id)
+            committed, complete = await self._load_context_records(repository, session.id)
             history = [
                 {"role": message.role, "content": message.content}
                 for message in committed
             ]
             history.append({"role": "user", "content": turn.effective_content})
-            return run, session, turn, history
+            return run, session, turn, history, complete
+
+    async def _load_context_records(
+        self, repository: StateRepository, session_id: str, *, require_complete: bool = False,
+    ) -> tuple[list[MessageRecord], bool]:
+        budget = ContextBudget.from_config(self._llm_config)
+        bounds = await repository.context_message_bounds(session_id)
+        if bounds is None:
+            return [], True
+        groups: list[list[MessageRecord]] = []
+        pending: list[MessageRecord] = []
+        used = 0
+        pending_cost = 0
+        complete = True
+        records = repository.iter_context_messages(session_id, through_sequence=bounds[1])
+        async for record in records:
+            message = {"role": record.role, "content": record.content}
+            cost = message_estimate(message)
+            if used + pending_cost + cost > budget.input_limit:
+                if require_complete or not groups:
+                    raise budget.exceeded("loading required history", used + pending_cost + cost)
+                complete = False
+                pending = []  # Discard only this older, incomplete group from the projection.
+                break
+            pending.append(record)
+            pending_cost += cost
+            if is_user_input(message):
+                group = list(reversed(pending))
+                validate_tool_pairs([{"role": row.role, "content": row.content} for row in group])
+                groups.append(group)
+                used += pending_cost
+                pending, pending_cost = [], 0
+        if pending:
+            group = list(reversed(pending))
+            validate_tool_pairs([{"role": row.role, "content": row.content} for row in group])
+            groups.append(group)
+        return [row for group in reversed(groups) for row in group], complete
 
     async def _finish_run(self, run_id: str, outcome: RunOutcome) -> None:
         async with self._terminal_lock:
@@ -593,15 +643,10 @@ class RuntimeService:
         next_sequence: int,
         now: datetime,
     ) -> None:
-        existing = await repository.list_messages(
-            run.session_id,
-            committed_only=True,
-            active_only=True,
-        )
-        if not existing:
+        bounds = await repository.context_message_bounds(run.session_id)
+        if bounds is None:
             return
-        start_sequence = existing[0].sequence
-        end_sequence = existing[-1].sequence
+        start_sequence, end_sequence = bounds
         await repository.deactivate_messages_through(run.session_id, end_sequence)
         summary_ids: list[int] = []
         for message in outcome.active_context or []:
@@ -1019,8 +1064,12 @@ class RuntimeService:
                 self._bus,
                 self._artifact_store.session_dir(session_id),
                 session_id,
+                context_budget=ContextBudget.from_config(self._llm_config),
             )
-            result = await compactor.compact_messages(messages, provider, focus=focus)
+            try:
+                result = await compactor.compact_messages(messages, provider, focus=focus)
+            except ContextBudgetError as exc:
+                raise HandlerError(COMPACTION_FAILED, str(exc)) from exc
             if result is None:
                 raise HandlerError(COMPACTION_FAILED, "context compaction failed")
             context_version = await self._commit_manual_compaction(
@@ -1059,7 +1108,12 @@ class RuntimeService:
                 raise HandlerError(SESSION_CLOSED, "session already closed")
             if session.status == "running" or session.active_run_id is not None:
                 raise HandlerError(SESSION_BUSY, "session busy")
-            records = list(await repository.list_messages(session_id))
+            try:
+                records, _complete = await self._load_context_records(
+                    repository, session_id, require_complete=True,
+                )
+            except ContextBudgetError as exc:
+                raise HandlerError(COMPACTION_FAILED, str(exc)) from exc
             if not records:
                 raise HandlerError(COMPACTION_FAILED, "session has no active context")
             messages = [
@@ -1096,8 +1150,8 @@ class RuntimeService:
                 raise HandlerError(SESSION_NOT_FOUND, "session not found")
             if session.status != "ready" or session.active_run_id is not None:
                 raise HandlerError(SESSION_BUSY, "session changed during compaction")
-            current = list(await repository.list_messages(session_id))
-            if not current or current[-1].sequence != end_sequence:
+            bounds = await repository.context_message_bounds(session_id)
+            if bounds is None or bounds != (start_sequence, end_sequence):
                 raise HandlerError(COMPACTION_FAILED, "active context changed during compaction")
             await repository.deactivate_messages_through(session_id, end_sequence)
             next_sequence = await repository.next_message_sequence(session_id)

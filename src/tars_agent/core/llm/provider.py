@@ -13,6 +13,7 @@ import anthropic
 import httpx
 
 from tars_agent.core.bus.events import LlmModelSelectedEvent, LlmTokenEvent, LlmUsageEvent
+from tars_agent.core.compact.budget import DEFAULT_CONTEXT_BUDGET
 from tars_agent.core.events.bus import EventBus
 from tars_agent.core.llm.budget import BudgetTransport, ModelRequestBudgetExceeded, RequestLedger
 from tars_agent.core.llm.types import LlmResponse, ToolCallBlock, UsageStats
@@ -21,11 +22,6 @@ from tars_agent.core.paths import tars_home
 if TYPE_CHECKING:
     from tars_agent.core.config import LlmConfig
 
-_MODEL_CONTEXT_WINDOWS = {
-    "claude-sonnet-4-6": 200_000,
-    "claude-haiku-4-5-20251001": 200_000,
-    "claude-opus-4-7": 200_000,
-}
 _OFFICIAL_BASE_URL = "https://api.anthropic.com"
 log = logging.getLogger(__name__)
 _SYSTEM_PROMPT = (
@@ -54,10 +50,6 @@ class LlmStreamInterruptedError(RuntimeError):
         self.partial_text = partial_text
 
 
-def _context_window(model: str) -> int:
-    return _MODEL_CONTEXT_WINDOWS.get(model, 200_000)
-
-
 def _now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -76,9 +68,12 @@ class AnthropicProvider:
         read_timeout_s: float = 60.0, write_timeout_s: float = 10.0,
         pool_timeout_s: float = 10.0, attempts: int = 2, retry_delay_s: float = 1.0,
         request_budget_path: Path | None = None, request_limit: int | None = 100,
+        context_budget_tokens: int = DEFAULT_CONTEXT_BUDGET,
     ) -> None:
         if not model.strip() or attempts not in (1, 2):
             raise ProviderConfigurationError("Model must be nonempty and attempts must be 1 or 2")
+        if type(context_budget_tokens) is not int or context_budget_tokens <= 0:
+            raise ProviderConfigurationError("Context budget must be a positive integer")
         for value in (total_timeout_s, connect_timeout_s, read_timeout_s, write_timeout_s,
                       pool_timeout_s, retry_delay_s):
             if not math.isfinite(value) or value <= 0:
@@ -88,6 +83,7 @@ class AnthropicProvider:
         self._request_limit = request_limit
         self._model = model.strip()
         self._max_tokens = max_tokens
+        self._context_budget_tokens = context_budget_tokens
         self._total_timeout_s = total_timeout_s
         self._attempts = attempts
         self._retry_delay_s = retry_delay_s
@@ -135,6 +131,7 @@ class AnthropicProvider:
             pool_timeout_s=config.pool_timeout_s, attempts=config.attempts,
             retry_delay_s=config.retry_delay_s, request_budget_path=config.request_budget_path,
             request_limit=config.request_limit,
+            context_budget_tokens=config.context_budget_tokens,
         )
 
     def with_model(self, model: str) -> AnthropicProvider:
@@ -142,6 +139,7 @@ class AnthropicProvider:
             model, self._client, max_tokens=self._max_tokens,
             total_timeout_s=self._total_timeout_s, attempts=self._attempts,
             retry_delay_s=self._retry_delay_s, request_limit=self._request_limit,
+            context_budget_tokens=self._context_budget_tokens,
         )
 
     async def close(self) -> None:
@@ -328,7 +326,8 @@ class AnthropicProvider:
             raise LlmProtocolError("invalid usage counters")
         counts = cast(list[int], values)
         input_tokens, output_tokens, cache_read, cache_create = counts
-        context_pct = min(1.0, sum(counts) / _context_window(self._model))
+        # Ratio against the configured local policy, not an inferred endpoint window.
+        context_pct = min(1.0, sum(counts) / self._context_budget_tokens)
         return LlmResponse(
             stop_reason=reason, text=text, tool_calls=tool_calls, thinking_blocks=thinking,
             usage=UsageStats(input_tokens, output_tokens, cache_read, cache_create, context_pct),

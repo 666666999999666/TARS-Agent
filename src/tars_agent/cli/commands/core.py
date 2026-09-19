@@ -189,15 +189,17 @@ def cmd_core_start(config: TarsConfig) -> None:
     child_env["TARS_PORT"] = str(config.port)
     launch_log = tars_home() / "logs" / f"core-launch-{launch_id}.log"
     launch_log.parent.mkdir(parents=True, exist_ok=True)
+    group_options = subprocess_group_kwargs()
+    if sys.platform == "win32":
+        group_options["creationflags"] = (
+            group_options.get("creationflags", 0) | subprocess.CREATE_NO_WINDOW
+        )
     # Preserve early failures (including config/import errors before logging starts).
     with launch_log.open("ab") as diagnostics:
-        proc = subprocess.Popen(
+        proc: subprocess.Popen[bytes] = subprocess.Popen(
             [sys.executable, "-m", "tars_agent.core"],
             env=child_env,
-            **{**subprocess_group_kwargs(), **(
-                {"creationflags": subprocess_group_kwargs().get("creationflags", 0)
-                 | subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
-            )},
+            **group_options,
             stdout=diagnostics,
             stderr=diagnostics,
         )

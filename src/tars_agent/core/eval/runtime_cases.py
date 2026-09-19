@@ -108,7 +108,7 @@ def _output_summary(output: bytes, *, limit: int = 2_000) -> str:
 
 # 让 pytest 及其后代进入可整体终止的独立进程组
 def _process_group_options() -> dict[str, Any]:
-    if os.name == "nt":
+    if sys.platform == "win32":
         return {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
     return {"start_new_session": True}
 

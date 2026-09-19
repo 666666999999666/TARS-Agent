@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 import os
 import tomllib
@@ -10,6 +11,11 @@ from typing import Any
 
 from dotenv import dotenv_values
 
+from tars_agent.core.compact.budget import (
+    DEFAULT_CONTEXT_BUDGET,
+    DEFAULT_CONTEXT_MARGIN,
+    ContextBudget,
+)
 from tars_agent.core.paths import tars_home
 
 _DEFAULT_HOST = "127.0.0.1"
@@ -19,6 +25,7 @@ _DEFAULT_LOG_FORMAT = "text"
 _DEFAULT_MAX_STEPS = 20
 _DEFAULT_MODEL = "claude-sonnet-4-6"
 _DEFAULT_SANDBOX_IMAGE = "tars-agent-sandbox:0.8.0"
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -37,6 +44,9 @@ class AgentConfig:
 class LlmConfig:
     default_model: str = _DEFAULT_MODEL
     max_tokens: int = 8192
+    # Local request policy; this is not a verified remote model context window.
+    context_budget_tokens: int = DEFAULT_CONTEXT_BUDGET
+    context_safety_margin: int = DEFAULT_CONTEXT_MARGIN
     api_key: str = field(default="", repr=False)
     base_url: str = ""
     anthropic_api_key: str = field(default="", repr=False)
@@ -83,8 +93,8 @@ class SandboxConfig:
 class CompactionConfig:
     # Trigger automatic compaction at 80% context usage; set to 0 to disable.
     auto_threshold: float = 0.80
-    tool_result_limit: int = 8_000  # tool_result 截断触发字符数
-    tool_result_keep: int = 4_000   # 截断后保留的前缀字符数
+    tool_result_limit: int = 8_000  # Deprecated, parsed for compatibility, not applied.
+    tool_result_keep: int = 4_000   # Deprecated, parsed for compatibility, not applied.
 
 
 @dataclass
@@ -161,7 +171,8 @@ def _apply_toml(
         "logging": {"file"},
         "trace": {"enabled", "file", "include_llm_payload"},
         "permission": {"timeout_s"},
-        "llm": {"api_key", "base_url", "total_timeout_s", "connect_timeout_s",
+        "llm": {"api_key", "base_url", "context_budget_tokens", "context_safety_margin",
+                "total_timeout_s", "connect_timeout_s",
                 "read_timeout_s", "write_timeout_s", "pool_timeout_s",
                 "attempts", "retry_delay_s", "request_limit"},
     }
@@ -248,6 +259,7 @@ def _apply_toml(
             "default_model", "max_tokens", "api_key", "base_url",
             "total_timeout_s", "connect_timeout_s", "read_timeout_s", "write_timeout_s",
             "pool_timeout_s", "attempts", "retry_delay_s", "request_limit",
+            "context_budget_tokens", "context_safety_margin",
         }
         if unknown_llm:
             raise SystemExit(f"Unknown [llm] keys: {', '.join(sorted(unknown_llm))}")
@@ -279,6 +291,12 @@ def _apply_toml(
             if not isinstance(val, int) or val <= 0:
                 raise SystemExit("Config error: llm.max_tokens must be a positive integer")
             config.llm.max_tokens = val
+        for key in ("context_budget_tokens", "context_safety_margin"):
+            if key in llm:
+                value = llm[key]
+                if type(value) is not int or value < (1 if key == "context_budget_tokens" else 0):
+                    raise SystemExit(f"Config error: llm.{key} must be a valid integer budget")
+                setattr(config.llm, key, value)
 
     if "trace" in data:
         trace = data["trace"]
@@ -383,6 +401,7 @@ def _apply_toml(
                     "Config error: compaction.tool_result_limit must be a positive integer"
                 )
             config.compaction.tool_result_limit = val
+            _warn_ignored_compaction("compaction.tool_result_limit")
         if "tool_result_keep" in comp:
             val = comp["tool_result_keep"]
             if not isinstance(val, int) or val <= 0:
@@ -390,6 +409,7 @@ def _apply_toml(
                     "Config error: compaction.tool_result_keep must be a positive integer"
                 )
             config.compaction.tool_result_keep = val
+            _warn_ignored_compaction("compaction.tool_result_keep")
 
     if "mcp" in data:
         mcp = data["mcp"]
@@ -522,6 +542,13 @@ def _apply_env(
     request_limit = source.get("TARS_LLM_REQUEST_LIMIT")
     if request_limit is not None:
         config.llm.request_limit = _parse_request_limit(request_limit, "TARS_LLM_REQUEST_LIMIT")
+    for key in ("context_budget_tokens", "context_safety_margin"):
+        env_name = f"TARS_LLM_{key.upper()}"
+        if env_name in source:
+            raw = source[env_name]
+            if not raw.isascii() or not raw.isdecimal():
+                raise SystemExit(f"Config error: {env_name} must be a nonnegative integer")
+            setattr(config.llm, key, int(raw))
     attempts = source.get("TARS_LLM_ATTEMPTS")
     if attempts is not None:
         if attempts not in ("1", "2"):
@@ -636,6 +663,7 @@ def _apply_env(
                     f"got: {compact_tool_limit!r}"
                 )
             config.compaction.tool_result_limit = compact_tool_limit_val
+            _warn_ignored_compaction("TARS_COMPACT_TOOL_LIMIT")
         except ValueError:
             raise SystemExit(
                 "Config error: TARS_COMPACT_TOOL_LIMIT must be an integer, "
@@ -652,6 +680,7 @@ def _apply_env(
                     f"got: {compact_tool_keep!r}"
                 )
             config.compaction.tool_result_keep = compact_tool_keep_val
+            _warn_ignored_compaction("TARS_COMPACT_TOOL_KEEP")
         except ValueError:
             raise SystemExit(
                 "Config error: TARS_COMPACT_TOOL_KEEP must be an integer, "
@@ -669,6 +698,10 @@ def _apply_env(
         if not docker_binary:
             raise SystemExit("Config error: TARS_DOCKER_BINARY must not be empty")
         config.sandbox.docker_binary = docker_binary
+
+
+def _warn_ignored_compaction(key: str) -> None:
+    log.warning("%s is deprecated and not applied; it does not limit tool results", key)
 
 
 def _parse_request_limit(value: object, label: str) -> int | None:
@@ -707,6 +740,11 @@ def _boolean(value: str, label: str) -> bool:
 
 def _validate_config(config: TarsConfig) -> None:
     from urllib.parse import urlsplit
+
+    try:
+        ContextBudget.from_config(config.llm)
+    except ValueError as exc:
+        raise SystemExit(f"Config error: llm context budget: {exc}") from exc
 
     if config.host not in ("127.0.0.1", "localhost", "::1"):
         raise SystemExit("Config error: core.host must be a loopback host")

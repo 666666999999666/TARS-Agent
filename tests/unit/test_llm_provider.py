@@ -205,7 +205,7 @@ async def test_context_pct_counts_cached_prompt_and_next_step_output() -> None:
     )
     client = MagicMock()
     client.messages.stream.return_value = FakeStream([], final)
-    provider = AnthropicProvider(model="test-model", client=client)
+    provider = AnthropicProvider(model="test-model", client=client, context_budget_tokens=200_000)
 
     response, events = await _chat(provider)
 

@@ -33,6 +33,13 @@ class ExecutionContext:
         elif not self.messages:
             self.messages.append({"role": "user", "content": self.goal})
 
+    def current_input_start(self) -> int:
+        """Keep the actual current input even after a summary replaced the transcript."""
+        current = {"role": "user", "content": self.goal}
+        if not self.messages or self.messages[-1] != current:
+            self.messages.append(current)
+        return len(self.messages) - 1
+
     # 返回当前 run 的 system prompt；有 override 时跳过 base，直接注入记忆层
     def system_prompt(self, base: str) -> str:
         parts = [self.system_prompt_override if self.system_prompt_override else base]

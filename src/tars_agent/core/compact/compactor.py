@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from tars_agent.core.bus.events import ContextCompactedEvent
+from tars_agent.core.compact.budget import ContextBudget, message_estimate, validate_tool_pairs
 from tars_agent.core.events.bus import EventBus
 
 if TYPE_CHECKING:
@@ -64,10 +65,12 @@ class CompactionResult:
 
 class Compactor:
     # 初始化压缩器，绑定事件总线、session 目录和 session ID
-    def __init__(self, bus: EventBus, session_dir: Path, session_id: str) -> None:
+    def __init__(self, bus: EventBus, session_dir: Path, session_id: str, *,
+                 context_budget: ContextBudget | None = None) -> None:
         self._bus = bus
         self._session_dir = session_dir
         self._session_id = session_id
+        self._context_budget = context_budget or ContextBudget()
 
     # 压缩 ExecutionContext.messages，就地替换消息列表并写 summary 文件
     async def compact(
@@ -114,9 +117,8 @@ class Compactor:
     ) -> CompactionResult | None:
         from tars_agent.core.events.bus import EventBus as _Bus
 
-        original_estimate = sum(
-            len(str(m.get("content", ""))) for m in messages
-        ) // 4  # 粗略 token 估算（字符数 / 4）
+        validate_tool_pairs(messages)
+        original_estimate = sum(message_estimate(message) for message in messages)
 
         history_text = _messages_to_text(messages)
         prompt = _COMPACT_PROMPT
@@ -126,6 +128,9 @@ class Compactor:
         compress_request: list[dict[str, object]] = [
             {"role": "user", "content": f"{prompt}\n\n---\n\n{history_text}"}
         ]
+        summary_system = "You are a helpful assistant that summarizes conversations."
+        self._context_budget.require_fits(compress_request, summary_system, [],
+                                          stage="compaction request")
 
         try:
             silent_bus = _Bus()
@@ -135,7 +140,7 @@ class Compactor:
                 bus=silent_bus,
                 run_id="compact",
                 step=0,
-                system="You are a helpful assistant that summarizes conversations.",
+                system=summary_system,
             )
         except Exception:
             logger.exception("compactor: LLM call failed, skipping compaction")

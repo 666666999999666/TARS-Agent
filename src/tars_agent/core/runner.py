@@ -9,6 +9,7 @@ from typing import Any
 
 from tars_agent.core.artifacts import ArtifactStore
 from tars_agent.core.bus.events import RunStartedEvent
+from tars_agent.core.compact.budget import ContextBudget
 from tars_agent.core.compact.compactor import CompactionResult, Compactor
 from tars_agent.core.config import TarsConfig
 from tars_agent.core.context import ExecutionContext
@@ -105,6 +106,7 @@ class AgentRunner:
                     workspace_root=workspace_root,
                     parent_allowed_tools=allowed,
                     depth=0,
+                    context_budget=ContextBudget.from_config(self._config.llm),
                 ))
             if permits("agent_result"):
                 registry.register(AgentResultTool(self._task_registry, session_id=session_id))
@@ -146,6 +148,7 @@ class AgentRunner:
         session_notes: str,
         system_prompt_override: str | None = None,
         tool_whitelist: list[str] | None = None,
+        history_complete: bool = True,
     ) -> RunOutcome:
         root = workspace_root.expanduser().resolve(strict=True)
         context = ExecutionContext(
@@ -182,16 +185,21 @@ class AgentRunner:
                 provider=provider,
                 tool_whitelist=tool_whitelist,
             )
+            if not history_complete and self._config.compaction.auto_threshold > 0:
+                log.info("recent history projection run_id=%s; automatic compaction deferred "
+                         "because older active history was not loaded", run_id)
             loop = AgentLoop(
                 provider, registry, self._bus,
                 permission_manager=self._permission_manager,
                 compactor=Compactor(
                     self._bus, artifact_store.session_dir(session_id), session_id,
-                ),
+                    context_budget=ContextBudget.from_config(self._config.llm),
+                ) if history_complete else None,
                 compact_threshold=self._config.compaction.auto_threshold,
                 session_id=session_id,
                 workspace_root=root,
                 defer_compaction_publish=True,
+                context_budget=ContextBudget.from_config(self._config.llm),
             )
             await execute_loop(loop, context)
         except asyncio.CancelledError:

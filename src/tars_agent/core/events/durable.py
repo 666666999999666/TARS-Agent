@@ -160,9 +160,13 @@ class DurableEventHub:
         self._batch_interval_s = batch_interval_s
         self._subscriptions: dict[str, DurableSubscription] = {}
         self._worker: asyncio.Task[None] | None = None
+        self._stop_task: asyncio.Task[None] | None = None
+        self._barriers: set[asyncio.Future[None]] = set()
+        self._space_available = asyncio.Event()
         self._latest_cursor = 0
         self._fatal_error: BaseException | None = None
         self._stopping = False
+        self._stopped_cleanly = False
 
     @property
     def latest_cursor(self) -> int:
@@ -173,29 +177,62 @@ class DurableEventHub:
         return len(self._subscriptions)
 
     async def start(self) -> None:
+        self._raise_if_failed()
         if self._worker is not None:
             return
         async with self._database.session() as db_session:
             repository = StateRepository(db_session)
             self._latest_cursor = await repository.latest_event_cursor()
         self._stopping = False
+        self._stopped_cleanly = False
+        self._stop_task = None
         self._worker = asyncio.create_task(self._run(), name="durable-event-writer")
+        # A done callback also runs when cancellation happens before _run starts.
+        self._worker.add_done_callback(self._worker_finished)
 
     async def handle(self, event: BaseModel) -> None:
+        await self._enqueue(_PendingEvent(event))
+
+    def _raise_if_failed(self) -> None:
         if self._fatal_error is not None:
             raise DurableEventHubError("event persistence worker failed") from self._fatal_error
-        if self._worker is None or self._stopping:
+
+    def _check_running(self, *, allow_stopping: bool = False) -> None:
+        worker = self._worker
+        if worker is not None and worker.done():
+            self._worker_finished(worker)
+        self._raise_if_failed()
+        if worker is None or worker.done() or (self._stopping and not allow_stopping):
             raise DurableEventHubError("event hub is not running")
-        await self._queue.put(_PendingEvent(event))
+
+    async def _enqueue(self, item: object, *, allow_stopping: bool = False) -> None:
+        while True:
+            # No await between the lifecycle check and admission to the queue.
+            self._check_running(allow_stopping=allow_stopping)
+            try:
+                self._queue.put_nowait(item)
+                return
+            except asyncio.QueueFull:
+                self._space_available.clear()
+                await self._space_available.wait()
 
     async def flush(self) -> None:
-        if self._fatal_error is not None:
-            raise DurableEventHubError("event persistence worker failed") from self._fatal_error
-        if self._worker is None:
+        self._raise_if_failed()
+        if self._worker is None and not self._stopping:
             return
         future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
-        await self._queue.put(_FlushBarrier(future))
-        await future
+        self._barriers.add(future)
+        try:
+            await self._enqueue(_FlushBarrier(future))
+            await future
+        finally:
+            self._barriers.discard(future)
+            if not future.done():
+                future.cancel()
+            elif not future.cancelled():
+                # Failure/cancellation can occur while this caller is still trying
+                # to enqueue, before it ever awaits its already-failed future.
+                future.exception()
 
     async def subscribe(
         self,
@@ -206,8 +243,7 @@ class DurableEventHub:
         after_cursor: int = 0,
         queue_capacity: int = SUBSCRIPTION_QUEUE_CAPACITY,
     ) -> DurableSubscription:
-        if self._worker is None or self._stopping:
-            raise DurableEventHubError("event hub is not running")
+        self._check_running()
         if not topics:
             raise ValueError("topics must not be empty")
         if session_id is not None and run_id is not None:
@@ -254,30 +290,69 @@ class DurableEventHub:
             subscription.close()
 
     async def stop(self) -> None:
-        worker = self._worker
-        if worker is None:
+        if self._stop_task is None:
+            worker = self._worker
+            if worker is None:
+                self._raise_if_failed()
+                return
+            self._stopping = True
+            self._space_available.set()  # Reject producers still waiting for room.
+            self._stop_task = asyncio.create_task(self._finish_stop(worker),
+                                                  name="durable-event-stop")
+            self._stop_task.add_done_callback(
+                lambda task: task.exception() if not task.cancelled() else None
+            )
+        # One caller leaving must not abandon shutdown or cancel other callers.
+        await asyncio.shield(self._stop_task)
+
+    async def _finish_stop(self, worker: asyncio.Task[None]) -> None:
+        try:
+            if not worker.done():
+                try:
+                    await self._enqueue(_STOP, allow_stopping=True)
+                except DurableEventHubError:
+                    if self._fatal_error is None:
+                        raise
+            await asyncio.gather(worker, return_exceptions=True)
+            self._worker_finished(worker)
+            self._raise_if_failed()
+        finally:
+            self._worker = None
+            for subscription_id in list(self._subscriptions):
+                self.unsubscribe(subscription_id)
+
+    def _worker_finished(self, worker: asyncio.Task[None]) -> None:
+        if self._fatal_error is not None:
             return
-        self._stopping = True
-        if self._fatal_error is None:
-            await self.flush()
-            await self._queue.put(_STOP)
-        await asyncio.gather(worker, return_exceptions=True)
-        self._worker = None
-        for subscription_id in list(self._subscriptions):
-            self.unsubscribe(subscription_id)
+        try:
+            error = worker.exception()
+        except asyncio.CancelledError as exc:
+            error = exc
+        if error is None and not self._stopped_cleanly:
+            error = DurableEventHubError("event persistence worker exited unexpectedly")
+        self._space_available.set()
+        if error is None:
+            return
+        self._fatal_error = error
+        logger.error("durable event persistence worker failed",
+                     exc_info=(type(error), error, error.__traceback__))
+        self._fail_barriers(error)
+        for subscription in self._subscriptions.values():
+            subscription._overflowed = True
+            subscription._replace_live_queue(_OVERFLOW)
 
     async def _run(self) -> None:
         stop_requested = False
-        try:
-            while not stop_requested:
-                item = await self._queue.get()
+        while not stop_requested:
+            item = await self._queue.get()
+            taken = 1
+            self._space_available.set()
+            try:
                 if item is _STOP:
-                    self._queue.task_done()
                     break
                 if isinstance(item, _FlushBarrier):
                     if not item.future.done():
                         item.future.set_result(None)
-                    self._queue.task_done()
                     continue
 
                 assert isinstance(item, _PendingEvent)
@@ -289,11 +364,15 @@ class DurableEventHub:
                     if timeout <= 0:
                         break
                     try:
-                        next_item = await asyncio.wait_for(self._queue.get(), timeout=timeout)
+                        # Keep queue ownership in this task: cancellation must not
+                        # lose an item returned by a separate queue.get Task.
+                        async with asyncio.timeout(timeout):
+                            next_item = await self._queue.get()
                     except TimeoutError:
                         break
+                    taken += 1
+                    self._space_available.set()
                     if next_item is _STOP:
-                        self._queue.task_done()
                         stop_requested = True
                         break
                     if isinstance(next_item, _FlushBarrier):
@@ -303,30 +382,27 @@ class DurableEventHub:
                     batch.append(next_item)
 
                 await self._persist_and_fan_out(batch)
-                for _ in batch:
-                    self._queue.task_done()
                 if barrier is not None:
                     if not barrier.future.done():
                         barrier.future.set_result(None)
+            finally:
+                for _ in range(taken):
                     self._queue.task_done()
-        except BaseException as exc:
-            self._fatal_error = exc
-            logger.exception("durable event persistence worker failed")
-            self._fail_barriers(exc)
-            for subscription in self._subscriptions.values():
-                subscription._overflowed = True
-                subscription._replace_live_queue(_OVERFLOW)
-            if isinstance(exc, asyncio.CancelledError):
-                raise
+        # Requesting stop is not evidence that the accepted prefix was drained.
+        self._stopped_cleanly = True
 
     def _fail_barriers(self, exc: BaseException) -> None:
+        # Includes the current batch's dequeued barrier and callers blocked on put.
+        for future in self._barriers:
+            if not future.done():
+                error = DurableEventHubError("event persistence worker failed")
+                error.__cause__ = exc
+                future.set_exception(error)
         while True:
             try:
-                item = self._queue.get_nowait()
+                self._queue.get_nowait()
             except asyncio.QueueEmpty:
                 return
-            if isinstance(item, _FlushBarrier) and not item.future.done():
-                item.future.set_exception(exc)
             self._queue.task_done()
 
     async def _persist_and_fan_out(self, batch: list[_PendingEvent]) -> None:

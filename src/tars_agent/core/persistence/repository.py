@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import AsyncIterator, Iterable, Sequence
 from datetime import datetime
 from typing import Any, Literal
 
@@ -189,6 +189,33 @@ class StateRepository:
             statement = statement.where(MessageRecord.sequence > after_sequence)
         statement = statement.order_by(MessageRecord.sequence).limit(limit)
         return (await self.session.scalars(statement)).all()
+
+    async def context_message_bounds(self, session_id: str) -> tuple[int, int] | None:
+        statement = select(
+            func.min(MessageRecord.sequence), func.max(MessageRecord.sequence),
+        ).where(
+            MessageRecord.session_id == session_id,
+            MessageRecord.committed.is_(True), MessageRecord.active.is_(True),
+        )
+        first, last = (await self.session.execute(statement)).one()
+        return (int(first), int(last)) if first is not None and last is not None else None
+
+    async def iter_context_messages(
+        self, session_id: str, *, through_sequence: int,
+    ) -> AsyncIterator[MessageRecord]:
+        """Newest-first bounded pages for context loading, inside the caller's snapshot."""
+        before = through_sequence + 1
+        while True:
+            page = list(await self.session.scalars(select(MessageRecord).where(
+                MessageRecord.session_id == session_id,
+                MessageRecord.committed.is_(True), MessageRecord.active.is_(True),
+                MessageRecord.sequence < before,
+            ).order_by(MessageRecord.sequence.desc()).limit(128)))
+            if not page:
+                return
+            for record in page:
+                yield record
+            before = page[-1].sequence
 
     async def add_tool_invocation(
         self,

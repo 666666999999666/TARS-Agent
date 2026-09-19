@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import codecs
-import os
 import sys
 import threading
 
@@ -18,7 +17,7 @@ class TerminalInput:
         self._extended_key = False
 
     async def read(self) -> str | None:
-        if os.name == "nt" and sys.stdin.isatty():
+        if sys.platform == "win32" and sys.stdin.isatty():
             return await self._read_console()
         if not self._started:
             self._started = True
@@ -28,6 +27,8 @@ class TerminalInput:
         return await self._lines.get()
 
     async def _read_console(self) -> str | None:
+        if sys.platform != "win32":
+            raise RuntimeError("Console key polling requires Windows")
         import msvcrt
 
         # Windows ReadConsole reports both Ctrl+C and Ctrl+Z as empty reads.

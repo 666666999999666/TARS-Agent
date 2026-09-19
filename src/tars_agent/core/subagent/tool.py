@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from tars_agent.core.agents.loader import AgentProfile, AgentProfileLoader
 from tars_agent.core.bus.events import SubagentStartedEvent
+from tars_agent.core.compact.budget import ContextBudget
 from tars_agent.core.config import SandboxConfig
 from tars_agent.core.context import ExecutionContext
 from tars_agent.core.events.bus import EventBus
@@ -96,6 +97,7 @@ class SpawnAgentTool(BaseTool):
         workspace_root: Path | None = None,
         parent_allowed_tools: set[str] | None = None,
         depth: int = 0,
+        context_budget: ContextBudget | None = None,
     ) -> None:
         self._provider = provider
         self._parent_bus = parent_bus
@@ -110,6 +112,7 @@ class SpawnAgentTool(BaseTool):
         self._parent_allowed_tools = parent_allowed_tools
         self._workspace_root = (workspace_root or Path.cwd()).expanduser().resolve(strict=True)
         self._depth = depth
+        self._context_budget = context_budget or ContextBudget()
 
     # 派生子 agent，前台时阻塞直到完成并返回结果，后台时立即返回 run_id
     async def invoke(
@@ -174,6 +177,7 @@ class SpawnAgentTool(BaseTool):
             permission_manager=self._permission_manager,
             session_id=self._session_id,
             workspace_root=self._workspace_root,
+            context_budget=self._context_budget,
         )
 
         task: asyncio.Task[None] | None = None
@@ -343,6 +347,7 @@ class SpawnAgentTool(BaseTool):
                 workspace_root=self._workspace_root,
                 parent_allowed_tools=allowed,
                 depth=self._depth + 1,
+                context_budget=self._context_budget,
             )
             if _allowed("spawn_agent"):
                 registry.register(nested)

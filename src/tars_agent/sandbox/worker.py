@@ -125,7 +125,7 @@ async def _bash(
             stderr=asyncio.subprocess.PIPE,
             start_new_session=True,
         )
-    elif os.name == "nt":
+    elif sys.platform == "win32":
         # The helper owns a kill-on-close Job before it starts the shell.
         proc = await asyncio.create_subprocess_exec(
             sys.executable, "-I", str(Path(__file__).resolve()), "--host-shell", command,
@@ -245,6 +245,8 @@ async def _terminate_process(proc: asyncio.subprocess.Process) -> None:
 
 def _windows_host_shell(command: str) -> int:
     """Start a Windows shell only after this helper belongs to an owned Job."""
+    if sys.platform != "win32":
+        raise SandboxPolicyError("Windows host shell requires Windows")
     import ctypes
     from ctypes import wintypes
 

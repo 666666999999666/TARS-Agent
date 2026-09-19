@@ -488,6 +488,7 @@ class CoreApp:
                 subagent_registry=self._subagent_registry,
                 tool_runtime=self._tool_runtime,
                 compaction_provider_factory=lambda: AnthropicProvider.from_config(config.llm),
+                llm_config=config.llm,
             )
             resources.append(("runtime", self._runtime.shutdown))
             recovered = await self._runtime.recover_interrupted()

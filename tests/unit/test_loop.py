@@ -183,13 +183,15 @@ async def test_high_context_usage_compacts_before_next_model_step(
     assert ctx.status == "success"
     assert ctx.step == 2
     assert [item.summary_text for item in ctx.compactions] == ["compressed summary"]
-    assert provider.calls[2] == [
+    assert provider.calls[2][:2] == [
         {"role": "user", "content": "compressed summary"},
         {
             "role": "assistant",
             "content": "Understood, I'll continue from this summary.",
         },
     ]
+    # A summary is not a replacement for the literal current user instruction.
+    assert provider.calls[2][2:] == [{"role": "user", "content": ctx.goal}]
     assert any(event.type == "context.compacted" for event in events)  # type: ignore[attr-defined]
     assert len(list(tmp_path.glob("summary_*.md"))) == 1
 

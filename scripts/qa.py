@@ -5,6 +5,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -20,11 +21,58 @@ class QaError(RuntimeError):
 
 def run(command: list[str], *, label: str) -> None:
     ARTIFACT_ROOT.mkdir(parents=True, exist_ok=True)
-    result = subprocess.run(command, cwd=ROOT, capture_output=True, check=False)
-    (ARTIFACT_ROOT / f"{label}.log").write_bytes(result.stdout + result.stderr)
+    log_path = ARTIFACT_ROOT / f"{label}.log"
+    record: dict[str, object] = {"command": command, "cwd": str(ROOT), "returncode": None}
+    try:
+        result = subprocess.run(command, cwd=ROOT, capture_output=True, check=False)
+    except OSError as exc:
+        log_path.write_text(f"{type(exc).__name__}: {exc}\n", encoding="utf-8")
+        raise
+    else:
+        record["returncode"] = result.returncode
+        log_path.write_bytes(result.stdout + result.stderr)
+    finally:
+        (ARTIFACT_ROOT / f"{label}.command.json").write_text(
+            json.dumps(record, indent=2), encoding="utf-8",
+        )
     print(f"{label}: {'passed' if result.returncode == 0 else 'failed'} ({result.returncode})")
     if result.returncode:
         raise QaError(f"{label} failed; see build/qa/{label}.log")
+
+
+def prepare_artifacts() -> None:
+    """Copy only QA diagnostics for CI upload; leave the full local logs intact."""
+    labels = ("lock", "ruff", "mypy", "gen_protocol_doc", "check_architecture",
+              "check_docs", "check_workflows", "whitespace", "tests", "coverage-tests",
+              "diff-coverage", "build", "metadata", "archive")
+    names = [f"{label}.{suffix}" for label in labels for suffix in ("log", "command.json")]
+    names += ["junit.xml", "coverage.json", "coverage.xml", "coverage-gates.json",
+              "diff-coverage.json"]
+    secrets = {value for key, value in os.environ.items() if value and any(
+        part in key.upper() for part in ("KEY", "TOKEN", "SECRET", "PASSWORD", "AUTHORIZATION")
+    )}
+    secrets |= {json.dumps(value)[1:-1] for value in secrets}
+    output = ARTIFACT_ROOT / "upload"
+    output.mkdir(parents=True, exist_ok=True)
+    count = 0
+    for name in dict.fromkeys(names):
+        source = ARTIFACT_ROOT / name
+        if not source.is_file():
+            continue
+        content = source.read_text(encoding="utf-8", errors="replace")
+        for value in sorted(secrets, key=len, reverse=True):
+            content = content.replace(value, "[REDACTED]")
+        content = re.sub(r"(?i)(https?://)[^/\s@]+@", r"\1[REDACTED]@", content)
+        content = re.sub(r"(?i)(Bearer\s+)[^\s\"'<>]+", r"\1[REDACTED]", content)
+        content = re.sub(
+            r"(?i)((?:api[_-]?key|token|password|secret|authorization)[\"']?\s*[:=]\s*[\"']?)"
+            r"[^\s\"'<>,;]+", r"\1[REDACTED]", content,
+        )
+        (output / name).write_text(content, encoding="utf-8")
+        count += 1
+    if not count:
+        raise QaError("No QA diagnostics are available for upload")
+    print(f"Prepared {count} sanitized QA artifacts in {output}")
 
 
 def python(*args: str) -> list[str]:
@@ -134,10 +182,14 @@ def security() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("profile", choices=["quick", "tests", "coverage", "build", "security", "full"])
+    parser.add_argument("profile", choices=["quick", "tests", "coverage", "build", "security", "full",
+                                            "artifacts"])
     parser.add_argument("--diff-base")
     args = parser.parse_args()
     try:
+        if args.profile == "artifacts":
+            prepare_artifacts()
+            return 0
         base = fixed_base(args.diff_base)
         if args.profile in {"quick", "full"}:
             quick(base)

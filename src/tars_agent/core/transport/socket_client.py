@@ -55,12 +55,21 @@ class SocketClient:
     async def close(self) -> None:
         self._closed = True
         self._fail_pending(IpcDisconnectedError("client connection closed"))
-        if self._writer is not None:
-            self._writer.close()
+        writer = self._writer
+        if writer is not None:
+            writer.close()
+            # Closing has begun; repeat close must not await a cancelled close waiter.
+            self._writer = None
             try:
-                await asyncio.wait_for(self._writer.wait_closed(), timeout=1.0)
-            except TimeoutError:
+                await asyncio.wait_for(writer.wait_closed(), timeout=1.0)
+            except (ConnectionResetError, BrokenPipeError):
+                # The read loop may already have handled this peer disconnect.
                 pass
+            except TimeoutError:
+                writer.transport.abort()
+            except asyncio.CancelledError:
+                writer.transport.abort()
+                raise
 
     # 注册服务器推送事件的回调，可多次调用以添加多个 handler
     def on_event(self, handler: EventHandler) -> None:
@@ -74,6 +83,8 @@ class SocketClient:
     async def send_command(
         self, method: str, params: dict[str, Any], *, timeout_s: float | None = None,
     ) -> dict[str, Any]:
+        if self._closed:
+            raise IpcDisconnectedError()
         if self._writer is None:
             raise RuntimeError("not connected — call connect() first")
         req_id = str(uuid.uuid4())
@@ -93,6 +104,9 @@ class SocketClient:
             self._pending.pop(req_id, None)
             if not fut.done():
                 fut.cancel()
+            elif not fut.cancelled():
+                # close() may fail this waiter while sending still waits on the lock/drain.
+                fut.exception()
             raise
 
     # 持续读取服务器消息，分发 RPC 响应到 pending future 或事件到 event handler

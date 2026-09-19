@@ -105,6 +105,8 @@ def safe_config_snapshot(config: TarsConfig) -> dict[str, JsonValue]:
         "llm": {
             "default_model": config.llm.default_model,
             "max_tokens": config.llm.max_tokens,
+            "context_budget_tokens": config.llm.context_budget_tokens,
+            "context_safety_margin": config.llm.context_safety_margin,
             "total_timeout_s": config.llm.total_timeout_s,
             "attempts": config.llm.attempts,
             "request_limit": config.llm.request_limit,
@@ -128,8 +130,15 @@ def safe_config_snapshot(config: TarsConfig) -> dict[str, JsonValue]:
         },
         "compaction": {
             "auto_threshold": config.compaction.auto_threshold,
-            "tool_result_limit": config.compaction.tool_result_limit,
-            "tool_result_keep": config.compaction.tool_result_keep,
+        },
+        "ignored_config": {
+            "compaction.tool_result_limit": config.compaction.tool_result_limit,
+            "compaction.tool_result_keep": config.compaction.tool_result_keep,
+        },
+        "context_budget": {
+            "source": "configured_local_policy",
+            "estimator": "utf8_json_bytes_plus_message_framing_v1",
+            "endpoint_window_verified": False,
         },
         "mcp": {
             "server_count": len(config.mcp.servers),
