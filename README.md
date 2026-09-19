@@ -1,10 +1,12 @@
 # TARS-Agent
 
-TARS-Agent 是由 liaoqizai 个人自主开发和维护的 Python 3.12 本地 Agent 项目：在终端提交任务，由模型决定是否调用工具，工具完成后把真实结果交回模型。V1 支持连续对话、会话历史、审批、Docker 工具隔离、子 Agent、MCP 和只读 Web 面板。
+TARS-Agent 是一个 Python 3.12 本地 Agent 项目：在终端提交任务，由模型决定是否调用工具，工具完成后把真实结果交回模型。代码包含连续对话、会话历史、审批、Docker 工具隔离、子 Agent、MCP 和只读 Web 面板。
+
+**当前保存的是求职学习基准版 `job-baseline-20260919`，不是全部验收完成版。** W01–W04 的实际修复、本机验证和剩余限制见[求职学习基准说明](docs/baseline/JOB_BASELINE.md)。本次正式 CLI 真实模型正常任务为两次通过、一次因请求预算耗尽失败；后者虽然文件正确，仍按失败保留。其他真实用户场景暂未完成，不宣称跨平台或全功能稳定。
 
 **CLI 和 TUI 都是正式任务入口。** `tars chat` 用于连续对话，`tars run --goal ...` 完成一次任务后退出客户端，`tars-tui` 提供终端界面。三种方式共用后台 Core；关闭客户端不会关闭 Core。
 
-版本可用 `uv run --no-sync tars --version` 查看。验证结果与环境边界见[V1 基准记录](docs/baseline/VERIFICATION_SUMMARY.md)。模型调用按受信配置计量。
+版本可用 `uv run --no-sync tars --version` 查看；本次没有为标签修改软件版本号。当前验证范围以[求职学习基准说明](docs/baseline/JOB_BASELINE.md)为准，[V1 基准记录](docs/baseline/VERIFICATION_SUMMARY.md)保留为历史资料。模型调用按受信配置计量。
 
 ## 每天怎么用
 
@@ -76,7 +78,7 @@ uv run --no-sync tars run cancel <run_id>
 先读[架构与阅读顺序](docs/baseline/ARCHITECTURE.md)，沿着一条任务学习：CLI/TUI 收输入 → RuntimeService 保存请求并启动任务 → AgentRunner 准备执行 → AgentLoop 请求模型和调用工具 → RuntimeService 保存结果。CLI 的两种使用方式共用 `cli/client.py`，没有新增第二个 AgentLoop。
 
 - [运行与故障排查](RUNBOOK.md)：安装、配置、真实任务与常见问题。
-- [当前验证摘要](docs/baseline/VERIFICATION_SUMMARY.md)和[已知限制](docs/baseline/LIMITATIONS.md)：哪些已验证，哪些仍受阻。
+- [求职学习基准说明](docs/baseline/JOB_BASELINE.md)和[已知限制](docs/baseline/LIMITATIONS.md)：当前已验证范围、失败与未验证项。
 - [Wire Protocol V2](WIRE_PROTOCOL.md)：需要理解 TUI 与 Core 通信时再看。
 
 开发时使用 `uv sync --locked --group qa --group security`。仅修改或构建 Web 前端时才需要在 `web` 下安装 npm 依赖；浏览器验收另准备 Chromium。测试命令与每次实际结果记录在验证摘要中。

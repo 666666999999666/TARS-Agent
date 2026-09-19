@@ -44,6 +44,9 @@ default_model = "YOUR_MODEL"
 base_url = "https://YOUR_PROVIDER"
 api_key = "YOUR_DEDICATED_KEY"
 request_limit = 100
+context_budget_tokens = 32768
+context_safety_margin = 1024
+max_tokens = 8192
 
 [sandbox]
 mode = "required"
@@ -55,6 +58,18 @@ image = "tars-agent-sandbox:0.8.0"
 项目 `.env` 和 `.tars/config.toml` 只能设置受限的普通选项，不能改变 MCP、Docker、端点、日志输出位置或提高请求限额。支持的环境变量见 [.env.example](.env.example)。`llm.router` 和 `sandbox.enabled` 已移除，旧配置若仍包含它们需要删掉；模型使用明确的 `default_model`，沙箱策略使用 `mode`。
 
 **限额 100 指同一个 HOME 账本中的累计请求，不是每个任务 100 次。** 请求发送前预占次数，模型重试、会话压缩和子 Agent 都使用 `acceptance/request-budget.sqlite3`。额度耗尽会在下次发送前停止。提高限额需要明确考虑成本；受信配置可设正整数或 `"unlimited"`，后者仍持续计数。不要删除账本或更换 HOME 绕过限额。
+
+## 上下文预算与旧配置
+
+`llm.context_budget_tokens` 是本地请求预算，默认 32768；它不代表模型端点的真实窗口已经确认。输入可用预算还要减去 `llm.max_tokens` 的输出预留和 `llm.context_safety_margin`（默认 1024）的额外余量。使用真实端点前仍需核对其窗口；代码不再给未知模型自动假定 200k。`llm.usage.context_pct` 表示实际 usage 相对于这个本地预算的比例。
+
+请求前按序列化 UTF-8 JSON 字节数加消息开销保守估算，覆盖 system、工具说明、历史和当前输入；这不是精确的 tokenizer 计数或费用账单。较早的历史可以不进入当前请求，最近需要的完整交互、当前输入和有效约束必须保留。工具调用与结果按具体 ID 配对，不能为了塞进预算拆开。原记录仍可在数据库历史中查看。
+
+出现 `context_budget_exceeded` 表示必需内容在预留输出和余量后放不下；本次或下一步模型请求没有发送。运行中已完成的工具操作不会因此回滚，工具结果仍保留在审计记录中。失败运行的消息不进入下一轮正式历史。先缩短任务或核对实际窗口及预算配置，不要把“增大预算”当作模型确实支持更大窗口。
+
+自动压缩只处理已完整读入的活动历史；仅载入近期部分历史时不会把未读记录标为已压缩。手动 `/compact` 若放不下完整输入会明确失败，原活动记录保持不变。正常压缩、摘要落库和恢复继续沿用事务规则，摘要之后仍保留当前输入。摘要有信息损失的可能，不保证无限期记住所有旧内容。
+
+旧的 `compaction.tool_result_limit`、`compaction.tool_result_keep` 及对应环境变量仍可解析，但会告警说明已弃用、未生效；来源记录将它们放入 `ignored_config`。它们不是工具输出保护。内建文件／命令工具已有的输出限制（例如 `sandbox.output_limit_bytes`）继续生效；本轮没有增加统一工具结果截断或外部结果存储系统。
 
 ## 启动、审批与恢复
 

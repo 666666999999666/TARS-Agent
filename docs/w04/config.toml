@@ -1,0 +1,35 @@
+# Copy only into a newly created, isolated test HOME. No real model credentials.
+[core]
+host = "127.0.0.1"
+port = 47470
+
+[llm]
+default_model = "w04-scripted-no-network"
+max_tokens = 256
+context_budget_tokens = 32768
+context_safety_margin = 1024
+request_limit = 1
+
+[agent]
+max_steps = 3
+
+[sandbox]
+mode = "required"
+image = "tars-agent-sandbox:0.8.0"
+
+[permission]
+timeout_s = 60
+
+[compaction]
+auto_threshold = 0.0
+
+[mcp]
+servers = []
+
+[trace]
+enabled = false
+include_llm_payload = false
+
+[logging]
+level = "WARNING"
+file = ""
