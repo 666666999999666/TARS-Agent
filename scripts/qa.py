@@ -44,10 +44,12 @@ def prepare_artifacts() -> None:
     """Copy only QA diagnostics for CI upload; leave the full local logs intact."""
     labels = ("lock", "ruff", "mypy", "gen_protocol_doc", "check_architecture",
               "check_docs", "check_workflows", "whitespace", "tests", "coverage-tests",
-              "diff-coverage", "build", "metadata", "archive")
+              "diff-coverage", "build", "metadata", "archive", "bandit", "public-history",
+              "pip-audit", "npm-audit")
     names = [f"{label}.{suffix}" for label in labels for suffix in ("log", "command.json")]
     names += ["junit.xml", "coverage.json", "coverage.xml", "coverage-gates.json",
-              "diff-coverage.json"]
+              "diff-coverage.json", "bandit.json", "public-content.json", "pip-audit.json",
+              "core-recovery.xml", "worker-boundary.xml", "installed-verification.json"]
     secrets = {value for key, value in os.environ.items() if value and any(
         part in key.upper() for part in ("KEY", "TOKEN", "SECRET", "PASSWORD", "AUTHORIZATION")
     )}

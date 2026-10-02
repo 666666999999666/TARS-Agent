@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from tars_agent.core.tools.runtime.models import (
+    CleanupConfirmation,
     RuntimeStatus,
     ToolExecutionRequest,
     ToolExecutionResult,
@@ -11,8 +12,9 @@ from tars_agent.sandbox.worker import execute_payload
 class FakeRuntime:
     """Deterministic test runtime; never selected by production configuration."""
 
-    def __init__(self, *, available: bool = True) -> None:
+    def __init__(self, *, available: bool = True, cleanup_confirmed: bool | None = True) -> None:
         self.available = available
+        self.cleanup_confirmed = cleanup_confirmed
         self.requests: list[ToolExecutionRequest] = []
         self.cleaned_runs: list[str] = []
         self.cancelled: list[str] = []
@@ -70,6 +72,12 @@ class FakeRuntime:
 
     async def cleanup(self) -> None:
         return None
+
+    async def confirm_cleanup(self) -> CleanupConfirmation:
+        return CleanupConfirmation(
+            self.cleanup_confirmed, "fake_runtime",
+            reason=None if self.cleanup_confirmed is True else "simulated_cleanup_unconfirmed",
+        )
 
 
 __all__ = ["FakeRuntime"]

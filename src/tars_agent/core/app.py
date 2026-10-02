@@ -57,6 +57,7 @@ from tars_agent.core.bus.envelope import HandlerError
 from tars_agent.core.config import TarsConfig, get_config
 from tars_agent.core.control import (
     CORE_LAUNCH_ID_ENV,
+    CoreHomeLock,
     DaemonControl,
     control_file_for,
     remove_control_file,
@@ -81,7 +82,8 @@ from tars_agent.core.processes import finish_cleanup
 from tars_agent.core.runner import AgentRunner
 from tars_agent.core.runtime import RunSnapshot, RuntimeService, SessionSnapshot
 from tars_agent.core.subagent.registry import BackgroundTaskRegistry
-from tars_agent.core.tools.runtime import RuntimeRouter, initialize_runtime_router
+from tars_agent.core.tools.runtime import DockerRuntime, RuntimeRouter, initialize_runtime_router
+from tars_agent.core.tools.runtime.recovery import SandboxResourceStore, recover_core_sandboxes
 from tars_agent.core.trace.record import TraceRecord
 from tars_agent.core.trace.writer import TraceWriter
 from tars_agent.core.transport.ipc_broadcaster import IpcEventBroadcaster
@@ -445,7 +447,16 @@ class CoreApp:
         installed_signals: list[signal.Signals] = []
         loop = asyncio.get_running_loop()
         control_path = control_file_for(config.port)
+        home_lock = CoreHomeLock(home)
+        home_lock.acquire()
         try:
+            owner = await recover_core_sandboxes(
+                config.sandbox, SandboxResourceStore(home_lock), launch_id=self._launch_id,
+                command=DockerRuntime._command,
+            )
+            tool_runtime = await initialize_runtime_router(config.sandbox, owner=owner)
+            self._tool_runtime = tool_runtime
+            resources.append(("tool runtime", self._tool_runtime.cleanup))
             if config.trace.enabled:
                 self._trace = TraceWriter(Path(config.trace.file).expanduser())
                 resources.append(("trace", self._trace.stop))
@@ -471,9 +482,6 @@ class CoreApp:
             resources.append(("mcp", self._mcp_manager.stop_all))
             if config.mcp.servers:
                 await self._mcp_manager.start_all(config.mcp.servers)
-            tool_runtime = await initialize_runtime_router(config.sandbox)
-            self._tool_runtime = tool_runtime
-            resources.append(("tool runtime", self._tool_runtime.cleanup))
             self._subagent_registry = BackgroundTaskRegistry(self._database, self._bus)
             resources.append(("subagents", self._subagent_registry.shutdown))
             self._runtime = RuntimeService(
@@ -541,14 +549,17 @@ class CoreApp:
                     failure_message="daemon cleanup failed during cancellation",
                 )
             finally:
-                remove_control_file(self._control_token, control_path)
-                self._database = None
-                self._runtime = None
-                self._event_hub = None
-                self._broadcaster = None
-                self._tool_runtime = None
-                self._subagent_registry = None
-                self._shutdown_event = None
+                try:
+                    remove_control_file(self._control_token, control_path)
+                    self._database = None
+                    self._runtime = None
+                    self._event_hub = None
+                    self._broadcaster = None
+                    self._tool_runtime = None
+                    self._subagent_registry = None
+                    self._shutdown_event = None
+                finally:
+                    home_lock.release()
 
 
 def run() -> None:

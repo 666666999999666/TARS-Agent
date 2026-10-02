@@ -93,8 +93,10 @@ class SkillLoader:
             if path.exists():
                 try:
                     return _parse_skill_file(path)
-                except Exception:
-                    return None
+                except (OSError, ValueError) as exc:
+                    # An invalid higher-priority file must not silently become
+                    # ordinary input or select a different, lower-priority Skill.
+                    raise ValueError(f"cannot load skill {name!r}") from exc
         return None
 
     def _within_roots(self, path: Path) -> bool:

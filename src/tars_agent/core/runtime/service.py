@@ -1341,13 +1341,18 @@ class RuntimeService:
             return content, {}
         parts = content[1:].split(None, 1)
         if not parts:
-            raise HandlerError(-32602, "skill name is required; use /<skill> [arguments]")
+            raise HandlerError(-32602, "请输入 Skill 名称：/<skill> [arguments]；本次任务未启动")
         skill_name = parts[0]
         arguments = parts[1] if len(parts) > 1 else ""
-        loader = SkillLoader(workspace_root=workspace_root)
-        skill = loader.resolve(skill_name)
+        try:
+            loader = SkillLoader(workspace_root=workspace_root)
+            skill = loader.resolve(skill_name)
+        except (OSError, ValueError) as exc:
+            raise HandlerError(
+                -32602, "Skill 名称无效或文件无法加载；请检查名称和 Skill 文件，本次任务未启动",
+            ) from exc
         if skill is None:
-            return content, {}
+            raise HandlerError(-32602, f"未找到 Skill /{skill_name}；本次任务未启动")
         effective = loader.render_prompt(skill, arguments)
         return effective, {
             "skill_name": skill_name,

@@ -21,6 +21,7 @@ from tars_agent.core.llm.provider import (
     AnthropicProvider,
     LlmCallTimeoutError,
     LlmProtocolError,
+    LlmRateLimitError,
     LlmStreamInterruptedError,
     ProviderConfigurationError,
 )
@@ -80,7 +81,7 @@ async def test_real_sdk_stream_and_clone_share_request_ledger(tmp_path: Path) ->
 async def test_http_status_retry_classification(tmp_path: Path, status: int, count: int) -> None:
     ledger = RequestLedger(tmp_path / "budget.sqlite3")
     async with _client(lambda request: httpx.Response(status, json={"error": {"type": "api_error", "message": "test"}}), ledger) as client:
-        with pytest.raises(anthropic.APIStatusError):
+        with pytest.raises(LlmRateLimitError if status == 429 else anthropic.APIStatusError):
             await AnthropicProvider("test", client, retry_delay_s=0.001).chat([], [], EventBus(), "x")
     assert ledger.counts()["real"] == count
 

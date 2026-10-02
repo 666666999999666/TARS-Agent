@@ -12,7 +12,7 @@ from tars_agent.core.control import read_control_file
 
 @pytest.mark.timeout(90)
 def test_launcher_verifies_ready_and_releases_control_on_stop(tmp_path: Path, free_port: int) -> None:
-    """Exercise the installed CLI outside the source directory with no model call."""
+    """Exercise CLI ready/stop behavior with an explicitly offline Core child."""
     home = tmp_path / "runtime-home"
     env = os.environ.copy()
     env.update({
@@ -23,7 +23,7 @@ def test_launcher_verifies_ready_and_releases_control_on_stop(tmp_path: Path, fr
     control_path = home / "control" / f"tars-core-{free_port}.json"
     def invoke(action: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, "-m", "tars_agent.cli", "core", action],
+            [sys.executable, str(Path(__file__).with_name("offline_cli.py")), "core", action],
             cwd=tmp_path, env=env, capture_output=True, text=True, encoding="utf-8",
             timeout=65 if action == "start" else 25,
         )

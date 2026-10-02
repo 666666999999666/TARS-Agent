@@ -5,6 +5,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import time
 import uuid
 from dataclasses import dataclass
@@ -14,10 +15,17 @@ from typing import Any
 from tars_agent.core.config import SandboxConfig
 from tars_agent.core.tools.runtime.models import (
     MUTATING_WORKSPACE_TOOLS,
+    CleanupConfirmation,
     RuntimeCleanupPending,
     RuntimeStatus,
     ToolExecutionRequest,
     ToolExecutionResult,
+)
+from tars_agent.core.tools.runtime.recovery import (
+    RECOVERY_COMMAND_TIMEOUT_S,
+    SandboxOwner,
+    SandboxRecoveryError,
+    SandboxResourceRecord,
 )
 
 log = logging.getLogger(__name__)
@@ -54,9 +62,11 @@ class _Container:
 class DockerRuntime:
     """Run-scoped, network-disabled Docker runtime for workspace tools."""
 
-    def __init__(self, config: SandboxConfig) -> None:
+    def __init__(self, config: SandboxConfig, *, owner: SandboxOwner | None = None) -> None:
         self._config = config
+        self._owner = owner
         self._instance_id = uuid.uuid4().hex[:12]
+        self._managed_records: dict[str, SandboxResourceRecord] = {}
         self._containers: dict[str, _Container] = {}
         self._container_guard = asyncio.Lock()
         self._workspace_locks: dict[Path, asyncio.Lock] = {}
@@ -159,7 +169,17 @@ class DockerRuntime:
         user = _host_user()
         if user is not None:
             args.extend(["--user", user])
-        args.append(self._config.image)
+        if self._owner is None:
+            args.extend(["--label", "com.tars-agent.purpose=ephemeral"])
+            args.append(self._config.image)
+        else:
+            record = self._managed_records[request.run_id]
+            for key, value in record.labels.items():
+                if key not in {
+                    "com.tars-agent.sandbox", "com.tars-agent.instance", "com.tars-agent.run",
+                }:
+                    args.extend(["--label", f"{key}={value}"])
+            args.append(record.image_id)
         return args
 
     async def execute(self, request: ToolExecutionRequest) -> ToolExecutionResult:
@@ -205,6 +225,24 @@ class DockerRuntime:
                     )
                 return existing, ToolExecutionResult("", "workspace_sandbox", False)
             name = _container_name(request.run_id, self._instance_id)
+            if self._owner is not None:
+                if request.run_id in self._managed_records:
+                    return None, ToolExecutionResult(
+                        content="sandbox resource recovery is still pending",
+                        backend="workspace_sandbox", started=False, is_error=True,
+                        error_type="sandbox_recovery_required", retryable=False,
+                    )
+                try:
+                    record = await self._owner.create_intent(
+                        self._config, self._command, instance_id=self._instance_id,
+                        run_id=request.run_id, name=name, workspace_root=request.workspace_root,
+                    )
+                except SandboxRecoveryError as exc:
+                    return None, ToolExecutionResult(
+                        content=str(exc), backend="workspace_sandbox", started=False,
+                        is_error=True, error_type="sandbox_recovery_required", retryable=False,
+                    )
+                self._managed_records[request.run_id] = record
             self._container_start_attempted = True
             # Until ``docker run`` returns a usable id, its daemon-side outcome is
             # ambiguous. Keep a tombstone even when the first lookup says that the
@@ -229,7 +267,10 @@ class DockerRuntime:
                     backend="workspace_sandbox",
                     started=False,
                     is_error=True,
-                    error_type="sandbox_start_failed",
+                    error_type=(
+                        "sandbox_recovery_required" if request.run_id in self._managed_records
+                        else "sandbox_start_failed"
+                    ),
                     retryable=False,
                 )
             container_id = stdout.strip()
@@ -240,8 +281,28 @@ class DockerRuntime:
                     backend="workspace_sandbox",
                     started=False,
                     is_error=True,
-                    error_type="sandbox_start_failed",
+                    error_type=(
+                        "sandbox_recovery_required" if request.run_id in self._managed_records
+                        else "sandbox_start_failed"
+                    ),
                 )
+            if self._owner is not None:
+                try:
+                    self._managed_records[request.run_id] = await self._owner.confirm(
+                        self._managed_records[request.run_id], container_id,
+                        self._config, self._command,
+                    )
+                except asyncio.CancelledError:
+                    await _complete_cleanup_before_cancelling(
+                        self._cleanup_uncertain_container(name)
+                    )
+                    raise
+                except SandboxRecoveryError as exc:
+                    await self._cleanup_uncertain_container(name)
+                    return None, ToolExecutionResult(
+                        content=str(exc), backend="workspace_sandbox", started=False,
+                        is_error=True, error_type="sandbox_recovery_required", retryable=False,
+                    )
             self._uncertain_container_names.discard(name)
             container = _Container(
                 id=container_id,
@@ -258,6 +319,8 @@ class DockerRuntime:
         container: _Container,
         request: ToolExecutionRequest,
     ) -> ToolExecutionResult:
+        if self._owner is not None:
+            await self._owner.check_engine(self._config, self._command)
         payload = json.dumps(
             request.worker_payload(output_limit_bytes=self._config.output_limit_bytes),
             ensure_ascii=False,
@@ -410,6 +473,16 @@ class DockerRuntime:
 
     async def cleanup_run(self, run_id: str) -> None:
         async with self._container_guard:
+            if self._owner is not None:
+                record = self._managed_records.get(run_id)
+                if record is not None:
+                    try:
+                        await self._owner.remove(record, self._config, self._command)
+                    except SandboxRecoveryError as exc:
+                        log.warning("managed sandbox cleanup blocked reason=%s", exc)
+                        raise RuntimeCleanupPending(run_id) from exc
+                    self._forget_managed_run(run_id, record.name)
+                return
             container = self._containers.get(run_id)
             if container is not None:
                 code, _, stderr = await self._command(
@@ -438,10 +511,16 @@ class DockerRuntime:
                 raise RuntimeCleanupPending(run_id)
 
     def pending_cleanup_run_ids(self) -> tuple[str, ...]:
-        return tuple(sorted(set(self._containers) | {
+        return tuple(sorted(set(self._containers) | set(self._managed_records) | {
             self._uncertain_run_ids[name] for name in self._uncertain_container_names
             if name in self._uncertain_run_ids
         }))
+
+    def _forget_managed_run(self, run_id: str, name: str) -> None:
+        self._managed_records.pop(run_id, None)
+        self._containers.pop(run_id, None)
+        self._uncertain_container_names.discard(name)
+        self._uncertain_run_ids.pop(name, None)
 
     async def _cleanup_uncertain_container(
         self,
@@ -453,6 +532,23 @@ class DockerRuntime:
         self._uncertain_container_names.add(name)
         deadline = asyncio.get_running_loop().time() + max(0.0, grace_s)
         while True:
+            if self._owner is not None:
+                run_id = self._uncertain_run_ids.get(name)
+                record = self._managed_records.get(run_id) if run_id is not None else None
+                if record is None:
+                    log.error("managed container has no in-memory resource record")
+                    return
+                try:
+                    await self._owner.remove(record, self._config, self._command)
+                except SandboxRecoveryError as exc:
+                    if (exc.reason == "creation_outcome_unknown"
+                            and asyncio.get_running_loop().time() < deadline):
+                        await asyncio.sleep(_UNCERTAIN_CONTAINER_POLL_S)
+                        continue
+                    log.warning("uncertain managed sandbox cleanup blocked reason=%s", exc)
+                    return
+                self._forget_managed_run(record.run_id, name)
+                return
             code, stdout, stderr = await self._command(
                 [
                     self._config.docker_binary,
@@ -504,6 +600,16 @@ class DockerRuntime:
 
     async def _reap_current_instance(self) -> None:
         """Remove only containers labelled for this exact runtime instance."""
+        if self._owner is not None:
+            try:
+                await self._owner.recover(
+                    self._config, self._command, instance_id=self._instance_id,
+                )
+            except SandboxRecoveryError as exc:
+                raise RuntimeCleanupPending("<runtime>") from exc
+            for run_id, record in tuple(self._managed_records.items()):
+                self._forget_managed_run(run_id, record.name)
+            return
         code, stdout, stderr = await self._command(
             [
                 self._config.docker_binary,
@@ -574,6 +680,38 @@ class DockerRuntime:
             return None
         parsed = json.loads(stdout)
         return parsed[0] if isinstance(parsed, list) and parsed else None
+
+    async def confirm_cleanup(self) -> CleanupConfirmation:
+        if self.pending_cleanup_run_ids() or self._uncertain_container_names:
+            return CleanupConfirmation(
+                None, "docker_instance_inventory", reason="runtime_cleanup_still_pending",
+                scope_id=self._instance_id,
+            )
+        if self._owner is not None:
+            await self._owner.check_engine(self._config, self._command)
+        code, stdout, _ = await self._command(
+            [self._config.docker_binary, "ps", "--all", "--quiet", "--no-trunc", "--filter",
+             f"label=com.tars-agent.instance={self._instance_id}"],
+            timeout_s=RECOVERY_COMMAND_TIMEOUT_S,
+        )
+        if code != 0:
+            return CleanupConfirmation(
+                None, "docker_instance_inventory", reason=f"docker_query_failed_exit_{code}",
+                scope_id=self._instance_id,
+            )
+        remaining = tuple(stdout.split())
+        if any(re.fullmatch(r"[0-9a-f]{64}", item) is None for item in remaining):
+            return CleanupConfirmation(
+                None, "docker_instance_inventory", reason="invalid_docker_inventory",
+                scope_id=self._instance_id,
+            )
+        if self._owner is not None:
+            await self._owner.check_engine(self._config, self._command)
+        return CleanupConfirmation(
+            not remaining, "docker_instance_inventory", remaining,
+            None if not remaining else "containers_still_present",
+            scope_id=self._instance_id,
+        )
 
     @staticmethod
     async def _command(

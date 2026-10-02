@@ -119,7 +119,7 @@ async def test_internal_adapter_skips_without_model_credentials(
 
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.setattr(internal.tempfile, "mkdtemp", fake_mkdtemp)
-    adapter = internal.InternalEvalAdapter(TarsConfig())
+    adapter = internal.InternalEvalAdapter(TarsConfig(), artifact_root=tmp_path / "evidence")
     task = EvalTaskSpec(
         id="read",
         goal="Read clue.txt",
@@ -315,7 +315,7 @@ async def test_internal_write_task_has_permission_and_keeps_fixed_budget_path(
         return AgentRunner(actual_config, provider=ScriptedProvider(), **kwargs)
 
     monkeypatch.setattr(internal, "AgentRunner", runner_factory)
-    adapter = internal.InternalEvalAdapter(config)
+    adapter = internal.InternalEvalAdapter(config, artifact_root=tmp_path / "evidence")
     config.llm.request_budget_path = tmp_path / "mutated.sqlite3"
     task = EvalTaskSpec(
         id="write", goal="Create result.txt with verified", tool_whitelist=["write_file"],
@@ -325,8 +325,9 @@ async def test_internal_write_task_has_permission_and_keeps_fixed_budget_path(
     assert result.status == EvalStatus.passed
     assert result.tools.calls_succeeded == 1
     assert result.usage.input_tokens is None
-    assert result.cleanup.runtime_cleanup_completed is None
-    assert result.sandbox.cleanup_completed is None
+    assert result.cleanup.runtime_cleanup_completed is True
+    assert result.sandbox.cleanup_completed is True
+    assert result.evaluation["runtime_cleanup_confirmation"]["source"] == "fake_runtime"
     assert result.cleanup.workspace_removed is True
     assert result.evaluation["runtime_cleanup_attempted"] is True
     assert observed_budget_paths == [fixed_budget]
@@ -361,7 +362,7 @@ async def test_internal_cleanup_exception_cannot_leave_passed_result(
         id="finish", goal="say done", tool_whitelist=["read_file"],
         grader=GraderSpec(kind="output_contains", expected="done"),
     )
-    result = await internal.InternalEvalAdapter(config).run_attempt(task, repetition=1, eval_run_id="test")
+    result = await internal.InternalEvalAdapter(config, artifact_root=tmp_path / "evidence").run_attempt(task, repetition=1, eval_run_id="test")
     assert result.status == EvalStatus.error
     assert result.score == 0
     assert result.cleanup.runtime_cleanup_completed is False
@@ -379,7 +380,7 @@ async def test_internal_adapter_requires_required_mode_before_model(
         id="x", goal="say done", tool_whitelist=["write_file"],
         grader=GraderSpec(kind="output_contains", expected="done"),
     )
-    result = await internal.InternalEvalAdapter(config).run_attempt(task, repetition=1, eval_run_id="test")
+    result = await internal.InternalEvalAdapter(config, artifact_root=tmp_path / "evidence").run_attempt(task, repetition=1, eval_run_id="test")
     assert result.status == EvalStatus.error
     assert "required" in result.error
     assert result.evaluation.get("model_request_reservations") is None
@@ -418,7 +419,7 @@ async def test_internal_cancellation_restores_process_context_and_cleans_workspa
         id="x", goal="wait", tool_whitelist=["read_file"],
         grader=GraderSpec(kind="output_contains", expected="done"),
     )
-    operation = asyncio.create_task(internal.InternalEvalAdapter(config).run_attempt(task, repetition=1, eval_run_id="test"))
+    operation = asyncio.create_task(internal.InternalEvalAdapter(config, artifact_root=tmp_path / "evidence").run_attempt(task, repetition=1, eval_run_id="test"))
     await started.wait()
     operation.cancel()
     with pytest.raises(asyncio.CancelledError):

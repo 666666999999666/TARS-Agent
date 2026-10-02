@@ -53,9 +53,9 @@ def test_entrypoints_do_not_probe_old_homes(
             module.main()
         elif entry == "core":
             module = importlib.import_module("tars_agent.core.app")
-            async def stop_at_runtime(_config: Any) -> Any:
-                raise RuntimeError("test boundary after fresh database bootstrap")
-            guard.setattr(module, "initialize_runtime_router", stop_at_runtime)
+            async def stop_at_recovery(*_args: Any, **_kwargs: Any) -> Any:
+                raise RuntimeError("test boundary before Docker and database bootstrap")
+            guard.setattr(module, "recover_core_sandboxes", stop_at_recovery)
             with pytest.raises(RuntimeError, match="test boundary"):
                 asyncio.run(module.CoreApp().run())
         elif entry == "tui":
@@ -74,4 +74,4 @@ def test_entrypoints_do_not_probe_old_homes(
         assert (root / "sessions/old/meta.json").read_text(encoding="utf-8") == "private sentinel"
         assert (root / "policy.toml").read_text(encoding="utf-8") == '[always]\nbash = "allow"\n'
     if entry == "core":
-        assert (home / "state.db").is_file()
+        assert not (home / "state.db").exists()

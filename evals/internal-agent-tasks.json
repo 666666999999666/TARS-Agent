@@ -1,0 +1,532 @@
+{
+  "schema_version": "1.0",
+  "suite_id": "internal-agent-tasks-v1",
+  "name": "TARS single versus orchestrated tasks",
+  "description": "Eight fixed tasks in four categories; four development and four held-out cases, paired modes, three repetitions. Freeze after development; do not tune on held-out cases.",
+  "adapter": "internal",
+  "execution_mode": "agent_tasks",
+  "model_config_ref": {
+    "source": "runtime_config",
+    "reference": "frozen-candidate-runtime-config"
+  },
+  "default_repetitions": 3,
+  "sandbox_mode": "required",
+  "tasks": [
+    {
+      "id": "extract-development-single",
+      "source_task_id": "extract-development",
+      "agent_mode": "single",
+      "goal": "读取 warehouse.json，筛选 active 为 true 且 stock 小于 5 的商品，按 sku 升序把 sku 列表写到 result.json。不要修改输入文件。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "warehouse.json": "[\n  {\n    \"sku\": \"C3\",\n    \"active\": true,\n    \"stock\": 0\n  },\n  {\n    \"sku\": \"A1\",\n    \"active\": true,\n    \"stock\": 4\n  },\n  {\n    \"sku\": \"B2\",\n    \"active\": false,\n    \"stock\": 1\n  },\n  {\n    \"sku\": \"D4\",\n    \"active\": true,\n    \"stock\": 5\n  }\n]\n"
+      },
+      "grader": {
+        "kind": "json_equals",
+        "path": "result.json",
+        "expected": [
+          "A1",
+          "C3"
+        ]
+      },
+      "metadata": {
+        "split": "development",
+        "category": "document_extraction",
+        "protected_paths": [
+          "warehouse.json"
+        ]
+      }
+    },
+    {
+      "id": "extract-development-orchestrated",
+      "source_task_id": "extract-development",
+      "agent_mode": "orchestrated",
+      "goal": "读取 warehouse.json，筛选 active 为 true 且 stock 小于 5 的商品，按 sku 升序把 sku 列表写到 result.json。不要修改输入文件。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "warehouse.json": "[\n  {\n    \"sku\": \"C3\",\n    \"active\": true,\n    \"stock\": 0\n  },\n  {\n    \"sku\": \"A1\",\n    \"active\": true,\n    \"stock\": 4\n  },\n  {\n    \"sku\": \"B2\",\n    \"active\": false,\n    \"stock\": 1\n  },\n  {\n    \"sku\": \"D4\",\n    \"active\": true,\n    \"stock\": 5\n  }\n]\n"
+      },
+      "grader": {
+        "kind": "json_equals",
+        "path": "result.json",
+        "expected": [
+          "A1",
+          "C3"
+        ]
+      },
+      "metadata": {
+        "split": "development",
+        "category": "document_extraction",
+        "protected_paths": [
+          "warehouse.json"
+        ]
+      }
+    },
+    {
+      "id": "extract-holdout-single",
+      "source_task_id": "extract-holdout",
+      "agent_mode": "single",
+      "goal": "读取 staff.json，筛选 enabled 为 true、team 为 infra 且每周 hours 至少 20 的成员，把 name 按字母升序写到 result.json。不要修改输入文件。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "staff.json": "[\n  {\n    \"name\": \"Zoe\",\n    \"enabled\": true,\n    \"team\": \"infra\",\n    \"hours\": 20\n  },\n  {\n    \"name\": \"Amy\",\n    \"enabled\": true,\n    \"team\": \"infra\",\n    \"hours\": 32\n  },\n  {\n    \"name\": \"Bob\",\n    \"enabled\": false,\n    \"team\": \"infra\",\n    \"hours\": 40\n  },\n  {\n    \"name\": \"Dan\",\n    \"enabled\": true,\n    \"team\": \"web\",\n    \"hours\": 40\n  },\n  {\n    \"name\": \"Eva\",\n    \"enabled\": true,\n    \"team\": \"infra\",\n    \"hours\": 19\n  }\n]\n"
+      },
+      "grader": {
+        "kind": "json_equals",
+        "path": "result.json",
+        "expected": [
+          "Amy",
+          "Zoe"
+        ]
+      },
+      "metadata": {
+        "split": "holdout",
+        "category": "document_extraction",
+        "protected_paths": [
+          "staff.json"
+        ]
+      }
+    },
+    {
+      "id": "extract-holdout-orchestrated",
+      "source_task_id": "extract-holdout",
+      "agent_mode": "orchestrated",
+      "goal": "读取 staff.json，筛选 enabled 为 true、team 为 infra 且每周 hours 至少 20 的成员，把 name 按字母升序写到 result.json。不要修改输入文件。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "staff.json": "[\n  {\n    \"name\": \"Zoe\",\n    \"enabled\": true,\n    \"team\": \"infra\",\n    \"hours\": 20\n  },\n  {\n    \"name\": \"Amy\",\n    \"enabled\": true,\n    \"team\": \"infra\",\n    \"hours\": 32\n  },\n  {\n    \"name\": \"Bob\",\n    \"enabled\": false,\n    \"team\": \"infra\",\n    \"hours\": 40\n  },\n  {\n    \"name\": \"Dan\",\n    \"enabled\": true,\n    \"team\": \"web\",\n    \"hours\": 40\n  },\n  {\n    \"name\": \"Eva\",\n    \"enabled\": true,\n    \"team\": \"infra\",\n    \"hours\": 19\n  }\n]\n"
+      },
+      "grader": {
+        "kind": "json_equals",
+        "path": "result.json",
+        "expected": [
+          "Amy",
+          "Zoe"
+        ]
+      },
+      "metadata": {
+        "split": "holdout",
+        "category": "document_extraction",
+        "protected_paths": [
+          "staff.json"
+        ]
+      }
+    },
+    {
+      "id": "aggregate-development-single",
+      "source_task_id": "aggregate-development",
+      "agent_mode": "single",
+      "goal": "读取 orders.csv，只统计 status 为 paid 的订单，按 department 汇总 amount_cents，输出 result.json 对象；保留出现过但没有 paid 订单的部门，金额记为 0。不要修改输入文件。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "orders.csv": "department,amount_cents,status\nbooks,1250,paid\ngames,2999,paid\nbooks,750,paid\ngames,999,cancelled\nmusic,400,pending\n"
+      },
+      "grader": {
+        "kind": "json_equals",
+        "path": "result.json",
+        "expected": {
+          "books": 2000,
+          "games": 2999,
+          "music": 0
+        }
+      },
+      "metadata": {
+        "split": "development",
+        "category": "data_processing",
+        "protected_paths": [
+          "orders.csv"
+        ]
+      }
+    },
+    {
+      "id": "aggregate-development-orchestrated",
+      "source_task_id": "aggregate-development",
+      "agent_mode": "orchestrated",
+      "goal": "读取 orders.csv，只统计 status 为 paid 的订单，按 department 汇总 amount_cents，输出 result.json 对象；保留出现过但没有 paid 订单的部门，金额记为 0。不要修改输入文件。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "orders.csv": "department,amount_cents,status\nbooks,1250,paid\ngames,2999,paid\nbooks,750,paid\ngames,999,cancelled\nmusic,400,pending\n"
+      },
+      "grader": {
+        "kind": "json_equals",
+        "path": "result.json",
+        "expected": {
+          "books": 2000,
+          "games": 2999,
+          "music": 0
+        }
+      },
+      "metadata": {
+        "split": "development",
+        "category": "data_processing",
+        "protected_paths": [
+          "orders.csv"
+        ]
+      }
+    },
+    {
+      "id": "aggregate-holdout-single",
+      "source_task_id": "aggregate-holdout",
+      "agent_mode": "single",
+      "goal": "读取 logs.jsonl，每行一条记录。按 service 统计 status 为 error 的条数，重复 id 只统计第一次出现的记录（即使之后状态不同）。把对象写到 result.json，所有出现过的 service 都要保留，缺少 error 时为 0。不要修改输入文件。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "logs.jsonl": "{\"id\":\"a\",\"service\":\"api\",\"status\":\"error\"}\n{\"id\":\"b\",\"service\":\"web\",\"status\":\"ok\"}\n{\"id\":\"a\",\"service\":\"api\",\"status\":\"ok\"}\n{\"id\":\"c\",\"service\":\"api\",\"status\":\"error\"}\n{\"id\":\"d\",\"service\":\"web\",\"status\":\"error\"}\n{\"id\":\"e\",\"service\":\"worker\",\"status\":\"ok\"}\n{\"id\":\"b\",\"service\":\"web\",\"status\":\"error\"}\n"
+      },
+      "grader": {
+        "kind": "json_equals",
+        "path": "result.json",
+        "expected": {
+          "api": 2,
+          "web": 1,
+          "worker": 0
+        }
+      },
+      "metadata": {
+        "split": "holdout",
+        "category": "data_processing",
+        "protected_paths": [
+          "logs.jsonl"
+        ]
+      }
+    },
+    {
+      "id": "aggregate-holdout-orchestrated",
+      "source_task_id": "aggregate-holdout",
+      "agent_mode": "orchestrated",
+      "goal": "读取 logs.jsonl，每行一条记录。按 service 统计 status 为 error 的条数，重复 id 只统计第一次出现的记录（即使之后状态不同）。把对象写到 result.json，所有出现过的 service 都要保留，缺少 error 时为 0。不要修改输入文件。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "logs.jsonl": "{\"id\":\"a\",\"service\":\"api\",\"status\":\"error\"}\n{\"id\":\"b\",\"service\":\"web\",\"status\":\"ok\"}\n{\"id\":\"a\",\"service\":\"api\",\"status\":\"ok\"}\n{\"id\":\"c\",\"service\":\"api\",\"status\":\"error\"}\n{\"id\":\"d\",\"service\":\"web\",\"status\":\"error\"}\n{\"id\":\"e\",\"service\":\"worker\",\"status\":\"ok\"}\n{\"id\":\"b\",\"service\":\"web\",\"status\":\"error\"}\n"
+      },
+      "grader": {
+        "kind": "json_equals",
+        "path": "result.json",
+        "expected": {
+          "api": 2,
+          "web": 1,
+          "worker": 0
+        }
+      },
+      "metadata": {
+        "split": "holdout",
+        "category": "data_processing",
+        "protected_paths": [
+          "logs.jsonl"
+        ]
+      }
+    },
+    {
+      "id": "repair-development-single",
+      "source_task_id": "repair-development",
+      "agent_mode": "single",
+      "goal": "pricing.py 的 discounted_price 把折扣率当作实际售价比例。只把错误的 return 表达式改为 price * (1 - discount)，保留其他字符和文件。运行 python check.py 确认。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "pricing.py": "def discounted_price(price, discount):\n    # discount is a fraction between 0 and 1.\n    return price * discount\n",
+        "check.py": "from pricing import discounted_price\nassert discounted_price(100, 0.2) == 80\nassert discounted_price(50, 0) == 50\nassert discounted_price(50, 1) == 0\nprint('checks passed')\n"
+      },
+      "grader": {
+        "kind": "files_equal",
+        "files": {
+          "pricing.py": "def discounted_price(price, discount):\n    # discount is a fraction between 0 and 1.\n    return price * (1 - discount)\n",
+          "check.py": "from pricing import discounted_price\nassert discounted_price(100, 0.2) == 80\nassert discounted_price(50, 0) == 50\nassert discounted_price(50, 1) == 0\nprint('checks passed')\n"
+        }
+      },
+      "metadata": {
+        "split": "development",
+        "category": "code_repair",
+        "protected_paths": [
+          "check.py"
+        ]
+      }
+    },
+    {
+      "id": "repair-development-orchestrated",
+      "source_task_id": "repair-development",
+      "agent_mode": "orchestrated",
+      "goal": "pricing.py 的 discounted_price 把折扣率当作实际售价比例。只把错误的 return 表达式改为 price * (1 - discount)，保留其他字符和文件。运行 python check.py 确认。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "pricing.py": "def discounted_price(price, discount):\n    # discount is a fraction between 0 and 1.\n    return price * discount\n",
+        "check.py": "from pricing import discounted_price\nassert discounted_price(100, 0.2) == 80\nassert discounted_price(50, 0) == 50\nassert discounted_price(50, 1) == 0\nprint('checks passed')\n"
+      },
+      "grader": {
+        "kind": "files_equal",
+        "files": {
+          "pricing.py": "def discounted_price(price, discount):\n    # discount is a fraction between 0 and 1.\n    return price * (1 - discount)\n",
+          "check.py": "from pricing import discounted_price\nassert discounted_price(100, 0.2) == 80\nassert discounted_price(50, 0) == 50\nassert discounted_price(50, 1) == 0\nprint('checks passed')\n"
+        }
+      },
+      "metadata": {
+        "split": "development",
+        "category": "code_repair",
+        "protected_paths": [
+          "check.py"
+        ]
+      }
+    },
+    {
+      "id": "repair-holdout-single",
+      "source_task_id": "repair-holdout",
+      "agent_mode": "single",
+      "goal": "bounds.py 的 in_closed_interval 漏掉闭区间右端点。只把 return 中的 < upper 改成 <= upper，保留其他字符和文件。运行 python check.py 确认。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "bounds.py": "def in_closed_interval(value, lower, upper):\n    # Both endpoints belong to this interval.\n    return lower <= value < upper\n",
+        "check.py": "from bounds import in_closed_interval\nassert in_closed_interval(3, 1, 3)\nassert in_closed_interval(1, 1, 3)\nassert not in_closed_interval(4, 1, 3)\nprint('checks passed')\n"
+      },
+      "grader": {
+        "kind": "files_equal",
+        "files": {
+          "bounds.py": "def in_closed_interval(value, lower, upper):\n    # Both endpoints belong to this interval.\n    return lower <= value <= upper\n",
+          "check.py": "from bounds import in_closed_interval\nassert in_closed_interval(3, 1, 3)\nassert in_closed_interval(1, 1, 3)\nassert not in_closed_interval(4, 1, 3)\nprint('checks passed')\n"
+        }
+      },
+      "metadata": {
+        "split": "holdout",
+        "category": "code_repair",
+        "protected_paths": [
+          "check.py"
+        ]
+      }
+    },
+    {
+      "id": "repair-holdout-orchestrated",
+      "source_task_id": "repair-holdout",
+      "agent_mode": "orchestrated",
+      "goal": "bounds.py 的 in_closed_interval 漏掉闭区间右端点。只把 return 中的 < upper 改成 <= upper，保留其他字符和文件。运行 python check.py 确认。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "bounds.py": "def in_closed_interval(value, lower, upper):\n    # Both endpoints belong to this interval.\n    return lower <= value < upper\n",
+        "check.py": "from bounds import in_closed_interval\nassert in_closed_interval(3, 1, 3)\nassert in_closed_interval(1, 1, 3)\nassert not in_closed_interval(4, 1, 3)\nprint('checks passed')\n"
+      },
+      "grader": {
+        "kind": "files_equal",
+        "files": {
+          "bounds.py": "def in_closed_interval(value, lower, upper):\n    # Both endpoints belong to this interval.\n    return lower <= value <= upper\n",
+          "check.py": "from bounds import in_closed_interval\nassert in_closed_interval(3, 1, 3)\nassert in_closed_interval(1, 1, 3)\nassert not in_closed_interval(4, 1, 3)\nprint('checks passed')\n"
+        }
+      },
+      "metadata": {
+        "split": "holdout",
+        "category": "code_repair",
+        "protected_paths": [
+          "check.py"
+        ]
+      }
+    },
+    {
+      "id": "update-development-single",
+      "source_task_id": "update-development",
+      "agent_mode": "single",
+      "goal": "只修改 config/dev.txt、config/prod.txt 和 README.md，把 active_timeout 统一改名为 request_timeout，值和其他字符保持原样；archive.txt 是历史记录，不要修改。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "config/dev.txt": "active_timeout=30\nretries=2\n",
+        "config/prod.txt": "active_timeout=60\nretries=3\n",
+        "README.md": "Set active_timeout in the environment config.\n",
+        "archive.txt": "Old setting: active_timeout=10\n"
+      },
+      "grader": {
+        "kind": "files_equal",
+        "files": {
+          "config/dev.txt": "request_timeout=30\nretries=2\n",
+          "config/prod.txt": "request_timeout=60\nretries=3\n",
+          "README.md": "Set request_timeout in the environment config.\n",
+          "archive.txt": "Old setting: active_timeout=10\n"
+        }
+      },
+      "metadata": {
+        "split": "development",
+        "category": "multi_file_update",
+        "protected_paths": [
+          "archive.txt"
+        ]
+      }
+    },
+    {
+      "id": "update-development-orchestrated",
+      "source_task_id": "update-development",
+      "agent_mode": "orchestrated",
+      "goal": "只修改 config/dev.txt、config/prod.txt 和 README.md，把 active_timeout 统一改名为 request_timeout，值和其他字符保持原样；archive.txt 是历史记录，不要修改。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "config/dev.txt": "active_timeout=30\nretries=2\n",
+        "config/prod.txt": "active_timeout=60\nretries=3\n",
+        "README.md": "Set active_timeout in the environment config.\n",
+        "archive.txt": "Old setting: active_timeout=10\n"
+      },
+      "grader": {
+        "kind": "files_equal",
+        "files": {
+          "config/dev.txt": "request_timeout=30\nretries=2\n",
+          "config/prod.txt": "request_timeout=60\nretries=3\n",
+          "README.md": "Set request_timeout in the environment config.\n",
+          "archive.txt": "Old setting: active_timeout=10\n"
+        }
+      },
+      "metadata": {
+        "split": "development",
+        "category": "multi_file_update",
+        "protected_paths": [
+          "archive.txt"
+        ]
+      }
+    },
+    {
+      "id": "update-holdout-single",
+      "source_task_id": "update-holdout",
+      "agent_mode": "single",
+      "goal": "只修改 src/client.txt、src/server.txt 和 GUIDE.md，把 protocol_version=1 改成 protocol_version=2，其他内容原样保留。fixtures/legacy.txt 是旧协议样本，不要修改。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "src/client.txt": "protocol_version=1\nclient_enabled=true\n",
+        "src/server.txt": "protocol_version=1\nport=8080\n",
+        "GUIDE.md": "Configure protocol_version=1 before launch.\n",
+        "fixtures/legacy.txt": "protocol_version=1\n"
+      },
+      "grader": {
+        "kind": "files_equal",
+        "files": {
+          "src/client.txt": "protocol_version=2\nclient_enabled=true\n",
+          "src/server.txt": "protocol_version=2\nport=8080\n",
+          "GUIDE.md": "Configure protocol_version=2 before launch.\n",
+          "fixtures/legacy.txt": "protocol_version=1\n"
+        }
+      },
+      "metadata": {
+        "split": "holdout",
+        "category": "multi_file_update",
+        "protected_paths": [
+          "fixtures/legacy.txt"
+        ]
+      }
+    },
+    {
+      "id": "update-holdout-orchestrated",
+      "source_task_id": "update-holdout",
+      "agent_mode": "orchestrated",
+      "goal": "只修改 src/client.txt、src/server.txt 和 GUIDE.md，把 protocol_version=1 改成 protocol_version=2，其他内容原样保留。fixtures/legacy.txt 是旧协议样本，不要修改。",
+      "timeout_s": 600,
+      "tool_whitelist": [
+        "read_file",
+        "list_dir",
+        "write_file",
+        "bash"
+      ],
+      "fixture_files": {
+        "src/client.txt": "protocol_version=1\nclient_enabled=true\n",
+        "src/server.txt": "protocol_version=1\nport=8080\n",
+        "GUIDE.md": "Configure protocol_version=1 before launch.\n",
+        "fixtures/legacy.txt": "protocol_version=1\n"
+      },
+      "grader": {
+        "kind": "files_equal",
+        "files": {
+          "src/client.txt": "protocol_version=2\nclient_enabled=true\n",
+          "src/server.txt": "protocol_version=2\nport=8080\n",
+          "GUIDE.md": "Configure protocol_version=2 before launch.\n",
+          "fixtures/legacy.txt": "protocol_version=1\n"
+        }
+      },
+      "metadata": {
+        "split": "holdout",
+        "category": "multi_file_update",
+        "protected_paths": [
+          "fixtures/legacy.txt"
+        ]
+      }
+    }
+  ]
+}

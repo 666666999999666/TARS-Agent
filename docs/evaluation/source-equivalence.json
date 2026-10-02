@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "experimental_source_revision": "a7b0f68a7aefd33b47eb93701bbdbd51a0a70378",
+  "published_runtime_matches_experimental_source": true,
+  "scope": "src/tars_agent tracked files at the experimental revision",
+  "file_count": 158,
+  "algorithm": "SHA-256 of sorted path + NUL + SHA-256(content with LF line endings) + newline, UTF-8 encoded",
+  "runtime_sha256": "6d4d4ea754eee7ef45a22c4de0209113c3205f15adc363ac6264f7f6b6b6843c",
+  "exclusions": [
+    "Publication documentation",
+    "Public summary verifier",
+    "CI and secret-scanner changes"
+  ],
+  "meaning": "Content equivalence for the measured runtime, not a new model run or a claim that the local experimental commit is published."
+}

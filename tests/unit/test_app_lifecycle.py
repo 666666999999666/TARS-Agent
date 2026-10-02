@@ -79,7 +79,10 @@ async def test_startup_failure_closes_every_acquired_resource(
     monkeypatch.setattr(app_module, "DurableEventHub", lambda _db: Resource("events"))
     monkeypatch.setattr(app_module, "IpcEventBroadcaster", lambda *_a, **_kw: Resource("broadcaster"))
     monkeypatch.setattr(app_module, "McpServerManager", lambda: Resource("mcp"))
-    async def initialize(_config: Any) -> Any:
+    async def recover(*_args: Any, **_kwargs: Any) -> Any:
+        return object()
+    monkeypatch.setattr(app_module, "recover_core_sandboxes", recover)
+    async def initialize(_config: Any, **_kwargs: Any) -> Any:
         if failure == "tools":
             raise RuntimeError("injected startup failure")
         return Resource("tools")
@@ -92,6 +95,47 @@ async def test_startup_failure_closes_every_acquired_resource(
     assert closed == list(reversed(acquired))
 
 
+@pytest.mark.parametrize("mode", ["required", "preferred"])
+async def test_recovery_failure_blocks_database_mcp_and_listener_and_releases_lock(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch, mode: str,
+) -> None:
+    from tars_agent.core.control import CoreHomeLock, DaemonControl, write_control_file
+    from tars_agent.core.tools.runtime.recovery import SandboxRecoveryError
+
+    config = TarsConfig()
+    config.sandbox.mode = mode
+    home = tmp_path / "home"
+    monkeypatch.setattr(app_module, "get_config", lambda: config)
+    monkeypatch.setattr(app_module, "setup_logging", lambda _config: None)
+    monkeypatch.setattr(app_module, "tars_home", lambda: home)
+    control_path = home / "control" / f"tars-core-{config.port}.json"
+    monkeypatch.setattr(app_module, "control_file_for", lambda _port: control_path)
+    write_control_file(DaemonControl(1, config.host, config.port, "old-control", "old-launch"), control_path)
+    original_control = control_path.read_bytes()
+
+    async def recover(*_args: Any, **_kwargs: Any) -> Any:
+        other = CoreHomeLock(home)
+        with pytest.raises(RuntimeError, match="HOME is in use"):
+            other.acquire()
+        raise SandboxRecoveryError("docker_engine_unavailable")
+
+    def unexpected(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError("resources must not start before recovery succeeds")
+
+    monkeypatch.setattr(app_module, "recover_core_sandboxes", recover)
+    monkeypatch.setattr(app_module, "bootstrap_state", unexpected)
+    monkeypatch.setattr(app_module, "McpServerManager", unexpected)
+    monkeypatch.setattr(app_module, "SocketServer", unexpected)
+    monkeypatch.setattr(app_module, "initialize_runtime_router", unexpected)
+    with pytest.raises(SandboxRecoveryError, match="docker_engine_unavailable"):
+        await CoreApp().run()
+    assert control_path.read_bytes() == original_control
+    assert not (home / "state.db").exists()
+    next_lock = CoreHomeLock(home)
+    next_lock.acquire()
+    next_lock.release()
+
+
 async def test_invalid_shutdown_payload_does_not_echo_control_token() -> None:
     from pydantic import ValidationError
 
@@ -100,3 +144,10 @@ async def test_invalid_shutdown_payload_does_not_echo_control_token() -> None:
     with pytest.raises(ValidationError) as caught:
         CoreShutdownCommand.model_validate({"token": {"secret": "DO-NOT-LOG"}})
     assert "DO-NOT-LOG" not in repr(_validation_details(caught.value))
+
+
+def test_control_repr_does_not_expose_shutdown_token() -> None:
+    from tars_agent.core.control import DaemonControl
+
+    control = DaemonControl(123, "127.0.0.1", 7437, "SYNTHETIC-PRIVATE-CONTROL-TOKEN", "launch")
+    assert "SYNTHETIC-PRIVATE-CONTROL-TOKEN" not in repr(control)

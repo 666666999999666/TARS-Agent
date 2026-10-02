@@ -46,6 +46,15 @@ class RuntimeStatus:
 
 
 @dataclass(frozen=True, slots=True)
+class CleanupConfirmation:
+    confirmed: bool | None
+    source: str
+    remaining_resource_ids: tuple[str, ...] = ()
+    reason: str | None = None
+    scope_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ToolExecutionRequest:
     invocation_id: str
     run_id: str
@@ -99,6 +108,7 @@ MUTATING_WORKSPACE_TOOLS = frozenset({"bash", "write_file"})
 
 
 __all__ = [
+    "CleanupConfirmation",
     "ExecutionStartedCallback",
     "MUTATING_WORKSPACE_TOOLS",
     "RuntimeStatus",

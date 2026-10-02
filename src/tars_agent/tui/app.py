@@ -26,6 +26,7 @@ from tars_agent.core.transport.message_submission import (
     new_client_message_id,
 )
 from tars_agent.core.transport.socket_client import IpcError, SocketClient
+from tars_agent.tui.permission_details import PermissionDetailsScreen
 
 log = logging.getLogger(__name__)
 
@@ -196,6 +197,12 @@ class PermissionSelect(Static):
             self.decision = decision
             super().__init__()
 
+    class DetailsRequested(Message):
+        def __init__(self, widget: PermissionSelect) -> None:
+            self.widget = widget
+            self.request_id = widget._request_id
+            super().__init__()
+
     # 初始化控件，存储工具 ID（用于 IPC 回复）
     def __init__(
         self,
@@ -203,10 +210,14 @@ class PermissionSelect(Static):
         choices: tuple[tuple[str, str, str], ...] | None = None,
         *,
         context: str = "",
+        tool_name: str = "",
+        params: dict[str, Any] | None = None,
     ) -> None:
         super().__init__("")
         self._request_id = request_id
         self._approval_context = context
+        self._tool_name = tool_name
+        self._params_json = _params_str(params or {})
         self._valid = True
         if choices is not None:
             self._CHOICES = choices
@@ -282,14 +293,18 @@ class PermissionSelect(Static):
                 lines.append(f"  [bold ansi_cyan]❯ {label}[/bold ansi_cyan]  [dim]{key_hint}[/dim]")
             else:
                 lines.append(f"    {label}  [dim]{key_hint}[/dim]")
-        lines.append("[dim]  ↑↓ navigate   enter confirm[/dim]")
+        lines.append("[dim]  ↑↓ navigate   enter confirm   v 查看完整参数[/dim]")
         return "\n".join(lines)
 
     # 方向键导航；快捷键直接选择；enter 确认光标位置
     def on_key(self, event: events.Key) -> None:
         log.debug("PermissionSelect.on_key  key=%r  char=%r", event.key, event.character)
         key = event.key
-        if key in ("up", "k"):
+        if key == "v":
+            event.stop()
+            if self._valid and not self.disabled:
+                self.post_message(self.DetailsRequested(self))
+        elif key in ("up", "k"):
             event.stop()
             self._cursor = (self._cursor - 1) % len(self._CHOICES)
             self.update(self._render_ui())
@@ -616,6 +631,7 @@ class TarsTuiApp(App[None]):
         self._cancellation_requested = False
         self._permission_runs: dict[str, str] = {}
         self._permission_selects: dict[str, PermissionSelect] = {}
+        self._permission_details: PermissionDetailsScreen | None = None
         self._resolved_permission_ids: set[str] = set()
         self._permission_replaying = False
         self._permission_replay_expected: int | None = None
@@ -687,7 +703,7 @@ class TarsTuiApp(App[None]):
     # 记录按键焦点；当 PermissionSelect 失去焦点后作为兜底处理权限快捷键
     def on_key(self, event: events.Key) -> None:
         log.debug("App.on_key  key=%r  focused=%r", event.key, self.focused)
-        if not self._pending_permission_blocks:
+        if self._permission_details is not None or not self._pending_permission_blocks:
             return
         try:
             select = next((item for item in self._permission_selects.values()
@@ -698,7 +714,10 @@ class TarsTuiApp(App[None]):
                 return  # PermissionSelect 有焦点时自行处理，事件不会冒泡到这里
             key = event.key
             decision = select._KEY_MAP.get(key)
-            if decision:
+            if key == "v":
+                event.stop()
+                self.on_permission_select_details_requested(PermissionSelect.DetailsRequested(select))
+            elif decision:
                 event.stop()
                 select._pick(decision)
             elif key in ("up", "k"):
@@ -772,6 +791,7 @@ class TarsTuiApp(App[None]):
         if not request_id:
             return
         self._resolved_permission_ids.add(request_id)
+        self._close_permission_details(request_id)
         self._permission_runs.pop(request_id, None)
         selector = self._permission_selects.pop(request_id, None)
         if selector is not None:
@@ -876,17 +896,50 @@ class TarsTuiApp(App[None]):
                 self._active_run_id = str(result["run_id"])
         except (IpcError, RuntimeError, OSError) as e:
             self._busy = False
+            rejected = isinstance(e, IpcError) and e.code == -32602
             prompt = self._prompt()
             if prompt is not None:
                 prompt.disabled = False
                 prompt.read_only = False
                 prompt.remove_class("permission-waiting")
                 prompt.border_title = self._PROMPT_HINT
+                if rejected:
+                    prompt.text = content
+                    prompt.focus()
             self._update_header("ready")
+            message = (
+                f"请求被拒绝：{escape(str(e))}。请修改输入后重新发送。"
+                if rejected else
+                f"send not confirmed: {escape(str(e))}; reconnect restores state only. "
+                "The message was not sent again."
+            )
             self._append(Static(
-                f"[ansi_red]send not confirmed: {escape(str(e))}; reconnect restores state only. "
-                "The message was not sent again.[/ansi_red]", classes="log-line",
+                f"[ansi_red]{message}[/ansi_red]", classes="log-line",
             ))
+
+    def on_permission_select_details_requested(
+        self, msg: PermissionSelect.DetailsRequested,
+    ) -> None:
+        if (self._permission_replaying or msg.widget.disabled
+                or self._permission_selects.get(msg.request_id) is not msg.widget
+                or msg.request_id not in self._pending_permission_blocks
+                or self._permission_details is not None):
+            return
+        details = PermissionDetailsScreen(
+            msg.request_id, msg.widget._tool_name, msg.widget._params_json,
+        )
+        self._permission_details = details
+
+        def closed(_result: None) -> None:
+            if self._permission_details is details:
+                self._permission_details = None
+
+        self.push_screen(details, closed)
+
+    def _close_permission_details(self, request_id: str | None = None) -> None:
+        details = self._permission_details
+        if details is not None and (request_id is None or details.request_id == request_id):
+            details.invalidate()
 
     # 处理内联审批控件的用户决策：发送 IPC 响应并恢复输入框
     async def on_permission_select_decided(self, msg: PermissionSelect.Decided) -> None:
@@ -939,6 +992,7 @@ class TarsTuiApp(App[None]):
             self.mount(select, before="#prompt")
 
     def _begin_permission_replay(self) -> None:
+        self._close_permission_details()
         self._permission_replay_generation += 1
         if self._permission_replay_task is not None:
             self._permission_replay_task.cancel()
@@ -1129,6 +1183,7 @@ class TarsTuiApp(App[None]):
             except IpcError as e:
                 header.update(f"[bold]TARS-Agent[/bold]  [ansi_red]subscribe error: {e}[/ansi_red]")
             finally:
+                self._close_permission_details()
                 if self._permission_replay_task is not None:
                     self._permission_replay_task.cancel()
                     await asyncio.gather(self._permission_replay_task, return_exceptions=True)
@@ -1439,9 +1494,16 @@ class TarsTuiApp(App[None]):
                 f"[bold]待审批：{escape(tool_name)}[/bold] · request_kind={escape(request_kind)}\n"
                 f"参数：{escape(_preview(param_preview, 160)) if param_preview else '（无摘要）'}"
             )
-            if approval_details:
-                context += "\n" + approval_details
-            select = PermissionSelect(request_id, choices, context=context)
+            if request_kind == "host_fallback":
+                context += (
+                    f"\nshell: {escape(str(event.get('platform_shell', 'unknown')))}"
+                    f"\n[ansi_red]{escape(_preview(str(event.get('warning', '')), 120))}[/ansi_red]"
+                )
+            params = event.get("params", {})
+            select = PermissionSelect(
+                request_id, choices, context=context, tool_name=tool_name,
+                params=params if isinstance(params, dict) else {},
+            )
             self._permission_selects[request_id] = select
             self._mount_permission_select(select)
             log.debug(

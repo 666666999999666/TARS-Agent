@@ -4,13 +4,13 @@ import asyncio
 import json
 import os
 import subprocess
-import sys
 import time
 from pathlib import Path
 
 import pytest
 
 from tars_agent.core.control import read_control_file
+from tests.integration.python_process import python_module_command
 
 
 # 功能：验证真实 daemon 响应 core.ping 命令并返回包含版本、uptime、时间戳的 PongResult
@@ -18,6 +18,7 @@ from tars_agent.core.control import read_control_file
 async def test_ping_returns_pong(
     running_daemon: subprocess.Popen[bytes],
     free_port: int,
+    tmp_path: Path,
 ) -> None:
     reader, writer = await asyncio.open_connection("127.0.0.1", free_port)
     req = {
@@ -42,6 +43,9 @@ async def test_ping_returns_pong(
     assert resp["result"]["event_schema_versions"] == [1]
     assert resp["result"]["uptime_ms"] >= 0
     assert "received_at" in resp["result"]
+    control = read_control_file(tmp_path / "tars-home" / "control" / f"tars-core-{free_port}.json")
+    assert control is not None
+    assert control.pid == running_daemon.pid
 
 
 # 功能：验证调用未注册方法时 daemon 返回 METHOD_NOT_FOUND 错误码（-32601）
@@ -102,12 +106,12 @@ async def test_daemon_management_works_without_api_key(
     env["TARS_TRACE_ENABLED"] = "false"
     env["TARS_SANDBOX_MODE"] = "preferred"
     env["TARS_HOME"] = str(tmp_path / "kama-home")
-    proc = subprocess.Popen([sys.executable, "-m", "tars_agent.core"], env=env)
+    proc = subprocess.Popen(python_module_command("tests.integration.offline_core"), env=env)
 
     try:
         # Importing the pinned official MCP SDK is intentionally lazy, but a cold
         # Windows interpreter plus SQLite migration can still exceed five seconds.
-        deadline = time.monotonic() + 10.0
+        deadline = time.monotonic() + 45.0
         while True:
             try:
                 reader, writer = await asyncio.open_connection("127.0.0.1", free_port)

@@ -17,6 +17,8 @@ from tars_agent.core.compact.budget import (
     ContextBudget,
 )
 from tars_agent.core.paths import tars_home
+from tars_agent.core.persistence.cost_budget import CostBudgetError, CostLedger
+from tars_agent.core.persistence.request_budget import validate_existing_request_ledger
 
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 7437
@@ -43,6 +45,7 @@ class AgentConfig:
 @dataclass
 class LlmConfig:
     default_model: str = _DEFAULT_MODEL
+    expected_model: str = ""
     max_tokens: int = 8192
     # Local request policy; this is not a verified remote model context window.
     context_budget_tokens: int = DEFAULT_CONTEXT_BUDGET
@@ -62,6 +65,7 @@ class LlmConfig:
         default_factory=lambda: tars_home() / "acceptance" / "request-budget.sqlite3",
         repr=False,
     )
+    cost_budget_path: Path | None = field(default=None, repr=False)
 
 
 @dataclass
@@ -171,7 +175,8 @@ def _apply_toml(
         "logging": {"file"},
         "trace": {"enabled", "file", "include_llm_payload"},
         "permission": {"timeout_s"},
-        "llm": {"api_key", "base_url", "context_budget_tokens", "context_safety_margin",
+        "llm": {"api_key", "base_url", "expected_model",
+                "context_budget_tokens", "context_safety_margin",
                 "total_timeout_s", "connect_timeout_s",
                 "read_timeout_s", "write_timeout_s", "pool_timeout_s",
                 "attempts", "retry_delay_s", "request_limit"},
@@ -256,14 +261,14 @@ def _apply_toml(
         if not isinstance(llm, dict):
             raise SystemExit("Config error: [llm] must be a table")
         unknown_llm: set[str] = set(llm.keys()) - {
-            "default_model", "max_tokens", "api_key", "base_url",
+            "default_model", "max_tokens", "api_key", "base_url", "expected_model",
             "total_timeout_s", "connect_timeout_s", "read_timeout_s", "write_timeout_s",
             "pool_timeout_s", "attempts", "retry_delay_s", "request_limit",
             "context_budget_tokens", "context_safety_margin",
         }
         if unknown_llm:
             raise SystemExit(f"Unknown [llm] keys: {', '.join(sorted(unknown_llm))}")
-        for key in ("api_key", "base_url"):
+        for key in ("api_key", "base_url", "expected_model"):
             if key in llm:
                 if not isinstance(llm[key], str):
                     raise SystemExit(f"Config error: llm.{key} must be a string")
@@ -530,6 +535,7 @@ def _apply_env(
         source = {key: value for key, value in source.items() if key in allowed}
     for key, env_name in (
         ("api_key", "TARS_LLM_API_KEY"), ("base_url", "TARS_LLM_BASE_URL"),
+        ("expected_model", "TARS_LLM_EXPECTED_MODEL"),
         ("anthropic_api_key", "ANTHROPIC_API_KEY"),
     ):
         if env_name in source:
@@ -542,6 +548,27 @@ def _apply_env(
     request_limit = source.get("TARS_LLM_REQUEST_LIMIT")
     if request_limit is not None:
         config.llm.request_limit = _parse_request_limit(request_limit, "TARS_LLM_REQUEST_LIMIT")
+    request_budget_path = source.get("TARS_LLM_REQUEST_BUDGET_PATH")
+    if request_budget_path is not None:
+        try:
+            config.llm.request_budget_path = validate_existing_request_ledger(
+                Path(request_budget_path)
+            )
+        except ValueError:
+            raise SystemExit(
+                "Config error: TARS_LLM_REQUEST_BUDGET_PATH must select an existing "
+                "absolute request ledger"
+            ) from None
+    cost_budget_path = source.get("TARS_LLM_COST_BUDGET_PATH")
+    if cost_budget_path is not None:
+        try:
+            cost_ledger = CostLedger(Path(cost_budget_path))
+            cost_ledger.summary()
+            config.llm.cost_budget_path = cost_ledger.path
+        except CostBudgetError:
+            raise SystemExit(
+                "Config error: TARS_LLM_COST_BUDGET_PATH must select an existing valid cost ledger"
+            ) from None
     for key in ("context_budget_tokens", "context_safety_margin"):
         env_name = f"TARS_LLM_{key.upper()}"
         if env_name in source:
@@ -752,6 +779,10 @@ def _validate_config(config: TarsConfig) -> None:
         raise SystemExit("Config error: core.port must be between 1 and 65535")
     if not math.isfinite(config.permission.timeout_s) or config.permission.timeout_s < 0:
         raise SystemExit("Config error: permission.timeout_s must be finite and nonnegative")
+    if any(c.isspace() for c in config.llm.expected_model):
+        raise SystemExit("Config error: llm.expected_model must not contain whitespace")
+    if config.llm.expected_model and config.llm.default_model.strip() != config.llm.expected_model:
+        raise SystemExit("Config error: llm.default_model must match llm.expected_model")
     if config.llm.base_url:
         if not config.llm.api_key:
             raise SystemExit(

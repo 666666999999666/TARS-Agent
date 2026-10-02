@@ -1,0 +1,5 @@
+# AppWorld 42b5bcf deliberately uses timezone-naive PendulumDateTime values.
+# SQLModel 0.0.45 changes inferred datetime columns to UTCDateTime and rejects them.
+# Keep upstream AppWorld source, data, and tests unchanged.
+# https://sqlmodel.tiangolo.com/release-notes/#0045
+sqlmodel==0.0.44

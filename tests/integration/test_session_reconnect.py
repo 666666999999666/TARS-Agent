@@ -3,13 +3,13 @@ from __future__ import annotations
 import asyncio
 import os
 import subprocess
-import sys
 import time
 from pathlib import Path
 from typing import Any
 
 from tars_agent.core.control import read_control_file
 from tars_agent.core.transport.socket_client import SocketClient
+from tests.integration.python_process import python_module_command
 
 
 def _start_delayed_daemon(port: int, home: Path) -> subprocess.Popen[bytes]:
@@ -26,7 +26,7 @@ def _start_delayed_daemon(port: int, home: Path) -> subprocess.Popen[bytes]:
         }
     )
     return subprocess.Popen(
-        [sys.executable, "-m", "tests.integration.delayed_daemon"],
+        python_module_command("tests.integration.delayed_daemon"),
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -34,7 +34,7 @@ def _start_delayed_daemon(port: int, home: Path) -> subprocess.Popen[bytes]:
 
 
 async def _wait_listening(proc: subprocess.Popen[bytes], port: int) -> None:
-    deadline = time.monotonic() + 10.0
+    deadline = time.monotonic() + 45.0
     while time.monotonic() < deadline:
         if proc.poll() is not None:
             stdout, stderr = proc.communicate()
@@ -51,7 +51,7 @@ async def _wait_listening(proc: subprocess.Popen[bytes], port: int) -> None:
             writer.close()
             await writer.wait_closed()
             return
-    raise AssertionError("daemon did not start within 10 seconds")
+    raise AssertionError("daemon did not start within 45 seconds")
 
 
 async def _wait_terminal(client: SocketClient, run_id: str) -> dict[str, Any]:

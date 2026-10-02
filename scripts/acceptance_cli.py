@@ -165,6 +165,103 @@ def permitted_answer(event: dict[str, Any], workspace: Path, allowed_files: set[
     return "y" if relative in allowed_files else "n"
 
 
+def tool_parameters(tool: dict[str, Any]) -> dict[str, Any]:
+    parameters = tool["parameters"]
+    if isinstance(parameters, str):
+        parameters = json.loads(parameters)
+    assert isinstance(parameters, dict), "tool parameters were not recorded as an object"
+    return parameters
+
+
+def check_expected_failure(
+    result: dict[str, Any], *, tool_name: str, parameters: dict[str, Any],
+    error_class: str, error_prefix: str, executed: bool, decision: str | None = None,
+) -> None:
+    assert result["run"]["status"] == "succeeded", "model did not finish handling the expected tool failure"
+    assert len(result["tools"]) == 1, "expected exactly one attempt of the specified tool"
+    tool = result["tools"][0]
+    assert tool["tool_name"] == tool_name
+    actual = tool_parameters(tool)
+    assert all(actual.get(key) == value for key, value in parameters.items()), "different tool parameters were attempted"
+    assert tool["status"] == "failed" and tool["error_class"] == error_class, "the tool failed for a different reason"
+    assert str(tool.get("error_message", "")).startswith(error_prefix), "expected tool failure evidence was not recorded"
+    assert bool(tool.get("started_at")) == executed, "tool execution did not match the expected scenario"
+    if executed:
+        assert tool["backend"] == "workspace_sandbox", "tool did not execute in Docker"
+    if decision is not None:
+        assert any(
+            item["answer"] == decision
+            and item["run_id"] + ":" + item["tool_use_id"] == tool["id"]
+            for item in result["approval_decisions"]
+        ), "the specified tool did not receive the expected CLI approval answer"
+
+
+def check_file_turn(
+    result: dict[str, Any], output: str, *, read_source: bool, note_marker: str | None = None,
+) -> None:
+    assert result["run"]["status"] == "succeeded", "file task did not succeed"
+    notes = [tool for tool in result["tools"] if tool["tool_name"] == "note_save"]
+    for note in notes:
+        assert note_marker is not None, "this file task did not request session memory"
+        assert note["status"] == "succeeded" and note.get("started_at")
+        assert note["backend"] == "in_process", "note_save used an unexpected backend"
+        content = tool_parameters(note).get("content")
+        assert isinstance(content, str) and note_marker in content, "saved note lost the source marker"
+    tools = [tool for tool in result["tools"] if tool["tool_name"] != "note_save"]
+    assert tools and all(tool["status"] == "succeeded" and tool.get("started_at")
+                         and tool["backend"] == "workspace_sandbox" for tool in tools), "file task did not complete all tools in Docker"
+    calls = [(tool["tool_name"], tool_parameters(tool).get("path")) for tool in tools]
+    assert ("write_file", output) in calls, "expected write_file did not execute"
+    if read_source:
+        assert ("read_file", "源数据.txt") in calls and ("read_file", output) in calls, "source/read-back tools did not execute"
+    else:
+        assert all(name == "write_file" and path == output for name, path in calls), "memory task fetched its answer from a tool"
+
+
+def check_cancelled_turn(result: dict[str, Any], command: str) -> None:
+    assert result["run"]["status"] == "cancelled" and result["cancel_sent"], "cancellation was not sent after the start marker"
+    assert len(result["tools"]) == 1, "cancellation scenario executed extra tools"
+    tool = result["tools"][0]
+    assert tool["tool_name"] == "bash" and tool_parameters(tool).get("command") == command
+    assert tool.get("started_at") and tool["backend"] == "workspace_sandbox", "cancellation did not interrupt a started Docker tool"
+    assert tool["status"] == "cancelled", "started tool was not recorded as cancelled"
+
+
+def check_permission_workspace_guard(result: dict[str, Any], workspace: Path, marker: str) -> None:
+    """Verify the production pre-execution path guard, separately from Docker's worker guard."""
+    run = result["run"]
+    assert run["status"] == "succeeded", "model did not finish after the boundary refusal"
+    assert result["core_launch_id"], "Core identity was not recorded"
+    assert result["session"]["id"] == run["session_id"]
+    assert Path(result["session"]["workspace_root"]).resolve() == workspace.resolve(), "the Run used a different workspace"
+    tools = result["tools"]
+    assert len(tools) == 2, "expected a normal read followed by exactly one boundary read"
+    normal, refused = tools
+    assert all(tool["run_id"] == run["id"] and tool["tool_name"] == "read_file" for tool in tools)
+    assert tool_parameters(normal).get("path") == "源数据.txt"
+    assert normal["status"] == "succeeded" and normal.get("started_at")
+    assert normal["backend"] == "workspace_sandbox", "the control read did not execute in Docker"
+    normal_output = normal["result"]
+    if isinstance(normal_output, str):
+        normal_output = json.loads(normal_output)
+    assert marker in normal_output["content"], "the control read did not return this fixture's marker"
+    assert normal["finished_at"] <= refused["created_at"], "the control read did not finish before the boundary attempt"
+    assert tool_parameters(refused) == {"path": "../outside.txt"}, "a different boundary request was attempted"
+    assert refused["status"] == "failed" and refused["error_class"] == "permission_denied"
+    assert str(refused["error_message"]).startswith("Permission was not granted"), "unexpected failure evidence"
+    assert refused["started_at"] is None, "the entry guard allowed the outside read to start"
+    assert not result["permission_requests"], "a prompted approval refusal is not the automatic workspace guard"
+    assert not result["approval_decisions"], "CLI approval answers cannot prove an automatic workspace refusal"
+
+
+def check_outside_sentinel(outside: Path, original: bytes, result: dict[str, Any], terminal: str) -> None:
+    digest = hashlib.sha256(original).hexdigest()
+    observed = outside.read_bytes()
+    assert observed == original and hashlib.sha256(observed).hexdigest() == digest, "outside sentinel changed"
+    visible = json.dumps(result, ensure_ascii=False) + terminal
+    assert original.decode("utf-8") not in visible and digest not in visible, "the outside sentinel was disclosed"
+
+
 class CliAcceptance:
     def __init__(self, output_root: Path, client_python: Path | None = None, workflow: str = "all"):
         self.workflow = workflow
@@ -202,6 +299,10 @@ class CliAcceptance:
     def run_ids(self) -> set[str]:
         return {row["id"] for row in self.rows("SELECT id FROM runs WHERE parent_run_id IS NULL")}
 
+    def execution_ids(self) -> tuple[set[str], set[str]]:
+        return ({row["id"] for row in self.rows("SELECT id FROM runs")},
+                {row["id"] for row in self.rows("SELECT id FROM tool_invocations")})
+
     def start_cli(self, name: str, arguments: list[str]) -> CliPty:
         command = [*self.cli_prefix, *arguments]
         pty = CliPty(command, self.workspace, self.root / "client-home", self.core.port,
@@ -213,7 +314,9 @@ class CliAcceptance:
 
     async def ping(self, label: str) -> None:
         pong = await self.core.rpc("core.ping", {"client": "acceptance-cli"})
+        assert self.core.control is not None and pong["launch_id"] == self.core.control.launch_id, "Core identity changed during CLI acceptance"
         self.core.report.setdefault("pings", []).append({"label": label, "at": now(),
+                                                          "launch_id": pong["launch_id"],
                                                           "server_version": pong["server_version"]})
 
     def check_source(self, label: str) -> None:
@@ -248,15 +351,21 @@ class CliAcceptance:
                     answer = permitted_answer(event, self.workspace, files, commands or set(), denied or set())
                     self.answered.add(event["request_id"])
                     self.core.decisions.append({"request_id": event["request_id"], "run_id": run["id"],
+                                                "tool_use_id": event["tool_use_id"],
                                                 "tool_name": event["tool_name"], "answer": answer, "at": now()})
                     pty.send(answer + "\r", "parameter-scoped tool approval: " + event["request_id"])
                 if cancel_marker and (self.workspace / cancel_marker).is_file() and not cancelled:
                     pty.send("\x03", "cancel after actual tool start marker")
                     cancelled = True
                 if run["status"] in TERMINAL:
-                    tools = self.rows("SELECT * FROM tool_invocations WHERE run_id=?", (run["id"],))
+                    tools = self.rows("SELECT * FROM tool_invocations WHERE run_id=? ORDER BY created_at,id", (run["id"],))
                     unfinished = [tool["id"] for tool in tools if tool["status"] in {"queued", "running"}]
+                    sessions = self.rows("SELECT id,workspace_root FROM sessions WHERE id=?", (run["session_id"],))
+                    assert len(sessions) == 1 and self.core.control is not None
                     result = {"run": run, "tools": tools, "cancel_sent": cancelled,
+                              "session": sessions[0], "core_launch_id": self.core.control.launch_id,
+                              "permission_requests": [json.loads(row["payload"]) for row in events],
+                              "approval_decisions": [item for item in self.core.decisions if item["run_id"] == run["id"]],
                               "terminal_tool_check": {"passed": not unfinished, "run_id": run["id"],
                                                       "unfinished_tool_ids": unfinished}}
                     self.core.report.setdefault("submissions", []).append({
@@ -289,6 +398,9 @@ class CliAcceptance:
     async def goal(self, name: str, prompt: str, exit_code: int, *, files: set[str],
                    commands: set[str] | None = None, denied: set[str] | None = None,
                    cancel_marker: str | None = None) -> dict[str, Any]:
+        case = {"name": name, "status": "running"}
+        self.core.report["cases"].append(case)
+        self.core.checkpoint()
         await self.ping(name + "-before")
         before = self.run_ids()
         pty = self.start_cli(name, ["run", "--goal", prompt])
@@ -297,10 +409,15 @@ class CliAcceptance:
         await pty.finish(exit_code)
         await self.ping(name + "-after-cli-exit")
         self.check_source(name)
-        self.core.report["cases"].append({"name": name, "status": "passed",
-                                          "run_id": result["run"]["id"], "exit_code": exit_code})
+        case.update(status="pending_validation", run_id=result["run"]["id"], exit_code=exit_code)
         self.core.checkpoint()
         return result
+
+    def pass_goal(self, name: str) -> None:
+        case = next(case for case in self.core.report["cases"] if case["name"] == name)
+        assert case["status"] == "pending_validation"
+        case["status"] = "passed"
+        self.core.checkpoint()
 
     async def chat_turn(self, pty: CliPty, prompt: str, **policy: Any) -> dict[str, Any]:
         if "\n" in prompt or "\r" in prompt:
@@ -335,46 +452,91 @@ class CliAcceptance:
                           script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
             await self.core.start(guarded=False)
             if self.workflow == "all":
-                await self.goal("goal-success", "只用read_file读取源数据.txt，把其中完整标记write_file写入goal-result.txt，再read_file读回核对，结束。", 0,
-                                files={"源数据.txt", "goal-result.txt"})
+                success = await self.goal("goal-success", "只用read_file读取源数据.txt，把其中完整标记write_file写入goal-result.txt，再read_file读回核对，结束。", 0,
+                                         files={"源数据.txt", "goal-result.txt"})
+                check_file_turn(success, "goal-result.txt", read_source=True)
                 self.check_file("goal-result.txt")
+                self.pass_goal("goal-success")
                 refused = await self.goal("goal-refused", "只尝试一次write_file写入blocked.txt，内容为blocked；若拒绝就说明并结束，不换工具或路径。", 1,
                                           files=set(), denied={"blocked.txt"})
                 assert not (self.workspace / "blocked.txt").exists()
-                assert any(tool["error_class"] == "permission_denied" for tool in refused["tools"])
+                check_expected_failure(
+                    refused, tool_name="write_file", parameters={"path": "blocked.txt", "content": "blocked"},
+                    error_class="permission_denied", error_prefix="Permission was not granted",
+                    executed=False, decision="n",
+                )
+                self.pass_goal("goal-refused")
                 fail_command = "python -c " + shlex.quote("raise SystemExit(7)")
                 failed = await self.goal("goal-tool-failed", "仅调用一次bash执行下面精确命令，timeout=30；若失败就如实说明并结束，不重试：\n" + fail_command, 1,
                                          files=set(), commands={fail_command})
-                assert any(tool["status"] == "failed" for tool in failed["tools"])
+                check_expected_failure(
+                    failed, tool_name="bash", parameters={"command": fail_command, "timeout": 30},
+                    error_class="runtime_error", error_prefix="[exit 7]\n", executed=True, decision="y",
+                )
+                self.pass_goal("goal-tool-failed")
+                outside = self.root / "outside.txt"
+                outside.write_text("outside-sentinel-" + secrets.token_hex(16), encoding="utf-8")
+                outside_content = outside.read_bytes()
+                escaped = await self.goal(
+                    "goal-path-escape",
+                    "本次验证入口的工作区边界。先仅调用一次 read_file 读取源数据.txt，等成功后，"
+                    "再仅调用一次 read_file 读取 ../outside.txt；允许工具自动拒绝访问，"
+                    "随后如实说明并结束，不改用其他工具或路径。",
+                    1, files={"源数据.txt"},
+                )
+                check_permission_workspace_guard(escaped, self.workspace, self.marker)
+                check_outside_sentinel(outside, outside_content, escaped, (
+                    self.root / "cli" / "goal-path-escape" / "terminal.ansi.log"
+                ).read_text(encoding="utf-8"))
+                report["outside_sentinel_unchanged"] = True
+                next(case for case in report["cases"] if case["name"] == "goal-path-escape").update(
+                    boundary="permission_workspace_guard", docker_worker_boundary="not_tested_by_cli",
+                    same_run_control_read=True, no_approval_prompt_or_answer=True,
+                    outside_sentinel_unchanged=True, outside_sentinel_disclosed=False,
+                )
+                self.pass_goal("goal-path-escape")
                 cancel = self.cancel_command("goal")
                 cancelled = await self.goal("goal-cancelled", "仅调用一次bash执行下面精确命令，timeout=30：\n" + cancel, 130,
                                             files=set(), commands={cancel}, cancel_marker="goal-started.txt")
-                assert cancelled["run"]["status"] == "cancelled"
+                check_cancelled_turn(cancelled, cancel)
             chat = self.start_cli("chat", ["chat"])
             await asyncio.sleep(0.5)
             for number in range(1, 4):
                 output = f"chat-{number}.txt"
                 prompt = (f"只用read_file读取源数据.txt，把完整标记write_file写入{output}并读回，记住这个标记，结束这一轮。")
                 result = await self.chat_turn(chat, prompt, files={"源数据.txt", output})
-                assert result["run"]["status"] == "succeeded"
+                check_file_turn(result, output, read_source=True, note_marker=self.marker)
                 self.check_file(output)
+                if number == 1:
+                    session_id = result["run"]["session_id"]
+                else:
+                    assert result["run"]["session_id"] == session_id, "chat switched sessions between turns"
             session_id = result["run"]["session_id"]
             chat_cancel = self.cancel_command("chat")
             result = await self.chat_turn(chat, "仅调用一次bash执行下面精确命令，timeout=30：" + chat_cancel,
                                           files=set(), commands={chat_cancel}, cancel_marker="chat-started.txt")
-            assert result["run"]["status"] == "cancelled"
+            assert result["run"]["session_id"] == session_id
+            check_cancelled_turn(result, chat_cancel)
             result = await self.chat_turn(chat, "取消已经结束。仅根据会话记忆，把完整标记write_file写入chat-after-cancel.txt并结束。",
                                           files={"chat-after-cancel.txt"})
-            assert result["run"]["status"] == "succeeded"
+            assert result["run"]["session_id"] == session_id
+            check_file_turn(result, "chat-after-cancel.txt", read_source=False, note_marker=self.marker)
             self.check_file("chat-after-cancel.txt")
             chat.send("\x1a\r", "idle Windows EOF: preserve session")
             await chat.finish(0)
             await self.ping("chat-after-eof")
+            before_resume = self.execution_ids()
             resumed = self.start_cli("chat-resumed", ["chat", "--resume", session_id])
             await asyncio.sleep(0.5)
+            await resumed.idle()
+            assert self.execution_ids() == before_resume, "resume replayed an old task or tool before new input"
             result = await self.chat_turn(resumed, "仅根据会话记忆，把完整标记write_file写入chat-restored.txt并结束。",
                                           files={"chat-restored.txt"})
             assert result["run"]["session_id"] == session_id
+            check_file_turn(result, "chat-restored.txt", read_source=False, note_marker=self.marker)
+            after_resume = self.execution_ids()
+            assert after_resume[0] - before_resume[0] == {result["run"]["id"]}, "resume submitted an additional Run"
+            assert after_resume[1] - before_resume[1] == {tool["id"] for tool in result["tools"]}, "resume executed an additional historical tool"
             self.check_file("chat-restored.txt")
             resumed.send("\x1a\r", "idle Windows EOF after restored task")
             await resumed.finish(0)
@@ -382,6 +544,7 @@ class CliAcceptance:
             await asyncio.sleep(21)
             if self.workflow == "all":
                 assert not (self.workspace / "goal-forbidden.txt").exists()
+                self.pass_goal("goal-cancelled")
             assert not (self.workspace / "chat-forbidden.txt").exists()
             report["cases"].append({"name": "chat-three-turns-cancel-continue-resume", "status": "passed", "session_id": session_id})
             report["status"] = "passed"
@@ -480,7 +643,7 @@ def main() -> int:
         print(json.dumps({"mode": "plan_only_no_requests", "output_root": str(args.output_root),
                           "selected_workflow": args.workflow,
                           "client_python": str(args.client_python or sys.executable),
-                          "cases": (["goal-success-0", "goal-refused-1", "goal-tool-failed-1", "goal-cancel-130"]
+                          "cases": (["goal-success-0", "goal-refused-1", "goal-tool-failed-1", "goal-path-escape-1", "goal-cancel-130"]
                                     if args.workflow == "all" else []) + ["chat-three-turns-cancel-continue-eof-resume"]}))
         return 0
     harness = CliAcceptance(args.output_root, args.client_python, args.workflow)

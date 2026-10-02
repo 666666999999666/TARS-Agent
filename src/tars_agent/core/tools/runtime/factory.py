@@ -2,20 +2,28 @@ from __future__ import annotations
 
 from tars_agent.core.config import SandboxConfig
 from tars_agent.core.tools.runtime.docker import DockerRuntime
+from tars_agent.core.tools.runtime.recovery import SandboxOwner
 from tars_agent.core.tools.runtime.router import RuntimeRouter
 
 
 # 按 sandbox.mode 构造唯一的 Docker/Host 路由策略。
-def build_runtime_router(config: SandboxConfig) -> RuntimeRouter:
+def build_runtime_router(
+    config: SandboxConfig, *, owner: SandboxOwner | None = None,
+) -> RuntimeRouter:
     return RuntimeRouter(
-        DockerRuntime(config),
+        DockerRuntime(config, owner=owner) if owner is not None else DockerRuntime(config),
         allow_host_fallback=config.mode == "preferred",
     )
 
 
 # required 模式在返回 Router 前完成沙箱可用性检查并失败关闭。
-async def initialize_runtime_router(config: SandboxConfig) -> RuntimeRouter:
-    runtime = build_runtime_router(config)
+async def initialize_runtime_router(
+    config: SandboxConfig, *, owner: SandboxOwner | None = None,
+) -> RuntimeRouter:
+    runtime = (
+        build_runtime_router(config, owner=owner)
+        if owner is not None else build_runtime_router(config)
+    )
     try:
         if config.mode == "required":
             status = await runtime.preflight()

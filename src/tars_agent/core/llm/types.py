@@ -27,3 +27,5 @@ class LlmResponse:
     usage: UsageStats | None = None
     # thinking blocks from extended thinking — must be preserved verbatim in conversation history
     thinking_blocks: list[dict[str, object]] = field(default_factory=list)
+    # Service-reported identity; never inferred from the requested model.
+    model: str | None = None
