@@ -366,7 +366,9 @@ def _resolve_stdio_command(
         candidate = command_path.resolve(strict=False)
         if not candidate.is_file():
             raise FileNotFoundError(f"stdio command was not found: {command}")
-        return str(candidate)
+        # Keep the configured launcher path: resolving a venv Python symlink
+        # for execution would lose its pyvenv.cfg and installed dependencies.
+        return str(command_path)
 
     # PureWindowsPath also rejects drive-relative and backslash-containing commands
     # when this validation is exercised on a non-Windows test host.
@@ -422,7 +424,9 @@ def _resolve_stdio_command(
                 continue
             if _is_within(resolved_candidate, current_resolved):
                 continue
-            return str(resolved_candidate)
+            # The resolved target is for the boundary check above; execution
+            # must preserve the launcher symlink and its environment semantics.
+            return str(candidate)
 
     raise FileNotFoundError(
         f"MCP stdio command not found in trusted PATH: {command!r}"

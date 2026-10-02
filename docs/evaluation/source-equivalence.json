@@ -1,15 +1,39 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "experimental_source_revision": "a7b0f68a7aefd33b47eb93701bbdbd51a0a70378",
-  "published_runtime_matches_experimental_source": true,
+  "published_runtime_matches_experimental_source": false,
   "scope": "src/tars_agent tracked files at the experimental revision",
   "file_count": 158,
+  "unchanged_file_count": 157,
   "algorithm": "SHA-256 of sorted path + NUL + SHA-256(content with LF line endings) + newline, UTF-8 encoded",
-  "runtime_sha256": "6d4d4ea754eee7ef45a22c4de0209113c3205f15adc363ac6264f7f6b6b6843c",
+  "experimental_runtime_sha256": "6d4d4ea754eee7ef45a22c4de0209113c3205f15adc363ac6264f7f6b6b6843c",
+  "published_runtime_sha256": "d5108e5cdd71331331093226ee0a78cd69b5695052135a0e224befd25a8be2d5",
+  "changed_runtime_files": [
+    {
+      "path": "src/tars_agent/core/mcp/client.py",
+      "experimental_sha256": "2d20d5f04cc6c5aca877c6c49b311717960c8469e843021b40ae464acda96537",
+      "published_sha256": "333f7fff1cd281bd2c3d431ba05a3a1262b262595dc47b6c5e0e303c6e6237c3",
+      "reason": "Preserve trusted MCP Python launcher symlink semantics; retain existing resolved-target safety checks."
+    }
+  ],
+  "dependency_changes": {
+    "runtime": {
+      "PyJWT": {
+        "experimental": "2.14.0",
+        "published": "2.15.1"
+      }
+    },
+    "qa_security": {
+      "urllib3": {
+        "experimental": "2.7.0",
+        "published": "2.8.0"
+      }
+    }
+  },
   "exclusions": [
     "Publication documentation",
     "Public summary verifier",
     "CI and secret-scanner changes"
   ],
-  "meaning": "Content equivalence for the measured runtime, not a new model run or a claim that the local experimental commit is published."
+  "meaning": "Historical model scores remain attributed to the experimental revision. The publication adds the declared launcher and dependency fixes; it does not claim a new model evaluation."
 }
