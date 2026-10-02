@@ -10,6 +10,10 @@
 
 本次不调用付费模型，不重跑完整 AppWorld，不把摘要复算写成新的官方评分。最终提交的远端结果见 [GitHub CI](https://github.com/666666999999666/TARS-Agent/actions/workflows/ci.yml)，合并要求最新候选全部门槛通过。
 
+完成下面的 MCP 与依赖修复后，公开候选第二轮本地完整 QA **全部门槛通过**：1357 passed、4 skipped、11 deselected；行覆盖率 **83.94%**、分支 **69.36%**、综合 **80.74%**。四个跳过项为三个明确的 POSIX 用例和一个既有 Windows 符号链接环境限制。静态检查、类型检查、文档、覆盖率、构建、归档、Bandit、实际 HEAD 历史扫描、pip/npm 审计均通过；后续仅补充本段结果说明。
+
+同一轮最终 wheel 与独立安装副本的 SHA256 完全一致。Windows 新建原生虚拟环境安装锁定依赖后，四个命令入口、数据库资源、打包 worker 及 Web smoke 通过，模型请求为零。这是本地安装 smoke，完整 Core/Docker 安装仍由下面的 Ubuntu CI 门槛验证。
+
 公开候选首轮本地 QA 的测试为 **1355 passed、1 skipped、11 deselected**，覆盖率为行 83.88%、分支 69.33%、综合 80.69%。构建、Bandit、内容扫描和 npm 审计通过，但 pip-audit 在 PyJWT 2.14.0、urllib3 2.7.0 中发现四项漏洞，因此该轮完整 QA **失败**，原记录保留。
 
 随后只更新两个锁定依赖版本：运行时 PyJWT 2.15.1、审计工具链 urllib3 2.8.0，并声明对应安全下限，其他锁定包版本不变；更新后独立依赖审计未发现已知漏洞。[PyJWT 官方修复说明](https://github.com/jpadilla/pyjwt/releases/tag/2.15.1)和 [urllib3 官方安全说明](https://github.com/urllib3/urllib3/releases/tag/2.8.0)给出修复范围。这属于发布时的安全维护，不能改写历史实验的依赖版本。
