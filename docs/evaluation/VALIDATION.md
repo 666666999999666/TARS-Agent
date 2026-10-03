@@ -22,7 +22,15 @@ main 的 Ubuntu job 实际执行了真实 Docker E2E、Core 崩溃回收与实�
 
 现有 WSL Ubuntu 的真实受控子进程专项通过：正常 TERM 退出码 −15，忽略 TERM 后 KILL 退出码 −9。已有环境只有 Python 3.10，探针加载当前源码中仅依赖标准库的身份/退出函数原文，不使用模型或 AppWorld；不能算 Python 3.12 完整项目或真实 AppWorld 崩溃恢复全链通过。回归另外确认身份/命令变化、查询失败或强杀后仍存活时保留 running，不清理旧 world、不启动下一 attempt、不改 checkpoint。
 
-本地 `qa.py quick` 的锁文件、全局 Ruff、严格 Mypy、协议、架构、文档、工作流与空白检查通过。CI 仅删除 quick 已执行的三个重复步骤，原检查要求保留。公开摘要离线复算通过，模型成绩仍属于 `a7b0f68`；`source-equivalence.json` 的 158 文件与指纹重新核对为 main `917d0e9`，没有改成当前 patch 的指纹。首次 QA 辅助回归因临时目录位于仓库内、Git 向上发现父仓库而失败；限定 Git 搜索边界后通过，未修改该测试或降低门槛。本轮未重跑 coverage/full、包安装、真实 Docker、浏览器或人工 TUI 验收。
+本地 `qa.py quick` 的锁文件、全局 Ruff、严格 Mypy、协议、架构、文档、工作流与空白检查通过。CI 仅删除 quick 已执行的三个重复步骤，原检查要求保留。公开摘要离线复算通过，模型成绩仍属于 `a7b0f68`；`source-equivalence.json` 的 158 文件与指纹重新核对为 main `917d0e9`，没有改成当前 patch 的指纹。首次 QA 辅助回归因临时目录位于仓库内、Git 向上发现父仓库而失败；限定 Git 搜索边界后通过，未修改该测试或降低门槛。该轮本地未重跑整套 coverage/full、包安装、真实 Docker、浏览器或人工 TUI 验收。
+
+## 修复分支首次 CI 与测试等待修正
+
+公开候选 `4c5320d` 的 [CI run 37131988590](https://github.com/666666999999666/TARS-Agent/actions/runs/37131988590) 中，Ubuntu 与 Web job 成功，Windows 在费用预算测试中触发 60 秒超时并中止，不能记为全部门槛通过。
+
+出问题的 `test_timeout_and_cancellation_keep_uncertain_reserve` 与 main `917d0e9` 相同：provider 总时限为 0.15 秒，测试却无限等待 HTTP 替身被调用。给真实费用预留增加受控 0.3 秒延迟后，先完成预留、再得到请求超时，HTTP 替身不会进入，旧测试仍等待事件，稳定复现了同样的悬挂。修正仅涉及测试：超时分支直接等待请求结果；取消分支同时观察 HTTP 进入和请求提前结束；finally 收尾测试持有的任务。新增“预留期间超时”的参数场景，继续检查未知预留与累计请求计数。
+
+生产预算、Provider、0.15 秒测试时限与 CI 60 秒门槛均未修改。修正后费用文件带覆盖率的定向检查 **44 passed**，本轮新增 Runtime/SSE/AppWorld 边界回归 **15 passed、2 skipped**，Ruff 与空白检查通过。后续提交仍须取得自身完整 CI，旧 `4c5320d` 的 Windows 失败保留；这些离线检查不产生模型成绩或真实 AppWorld 全链证据。
 
 ## 公开发布准备的历史检查
 

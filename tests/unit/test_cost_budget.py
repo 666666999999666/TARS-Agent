@@ -6,6 +6,7 @@ import os
 import sqlite3
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from pathlib import Path
@@ -419,10 +420,24 @@ async def test_invalid_complete_or_truncated_response_never_refunds(ledgers, pay
     assert costs.summary()["unknown_reserved_nano_cny"] == RESERVED
 
 
-@pytest.mark.parametrize("cancel", [False, True])
-async def test_timeout_and_cancellation_keep_uncertain_reserve(ledgers, cancel) -> None:
+@pytest.mark.parametrize(
+    ("cancel", "slow_reservation"),
+    [(False, False), (True, False), (False, True)],
+    ids=["timeout", "cancel", "timeout-during-reservation"],
+)
+async def test_timeout_and_cancellation_keep_uncertain_reserve(
+    ledgers, monkeypatch, cancel, slow_reservation,
+) -> None:
     requests, costs = ledgers
     entered = asyncio.Event()
+    if slow_reservation:
+        original_reserve = costs.reserve_attempt
+
+        def delayed_reserve(*args, **kwargs):
+            time.sleep(0.3)  # Complete a real reservation after the provider's deadline.
+            return original_reserve(*args, **kwargs)
+
+        monkeypatch.setattr(costs, "reserve_attempt", delayed_reserve)
 
     async def handler(request):
         entered.set()
@@ -431,11 +446,26 @@ async def test_timeout_and_cancellation_keep_uncertain_reserve(ledgers, cancel) 
 
     async with client_for(handler, requests, costs) as client:
         task = asyncio.create_task(provider_for(client, costs, total_timeout_s=0.15 if not cancel else 30).chat([], [], EventBus(), "stopped"))
-        await entered.wait()
-        if cancel:
-            task.cancel()
-        with pytest.raises(asyncio.CancelledError if cancel else LlmCallTimeoutError):
-            await task
+        owned: list[asyncio.Task] = [task]
+        try:
+            if cancel:
+                handler_entered = asyncio.create_task(entered.wait())
+                owned.append(handler_entered)
+                done, _ = await asyncio.wait(owned, return_when=asyncio.FIRST_COMPLETED)
+                if task in done:
+                    # A setup failure must surface instead of waiting forever
+                    # for an HTTP handler that this attempt will never reach.
+                    await task
+                    pytest.fail("Provider completed before cancellation")
+                task.cancel()
+            with pytest.raises(asyncio.CancelledError if cancel else LlmCallTimeoutError):
+                await task
+        finally:
+            for operation in owned:
+                operation.cancel()
+            await asyncio.gather(*owned, return_exceptions=True)
+        if slow_reservation:
+            assert not entered.is_set()
     assert costs.summary()["unknown_reserved_nano_cny"] == RESERVED
     assert requests.counts()["real"] == 2
 
