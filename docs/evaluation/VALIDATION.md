@@ -6,21 +6,27 @@
 
 公开候选的 QA、覆盖率、构建、安全审计、独立安装以及 PR/合并后 CI 必须分别记录最新提交结果。发布准备期间不将尚未完成的检查写成通过；下列历史数字不代替当前候选验收。
 
-[源码对应记录](source-equivalence.json)逐项核对 158 个运行时文件：157 个与历史实验源码相同，MCP 客户端另含下述解释器启动修复；依赖也有明确安全更新。历史模型成绩仍归属 `a7b0f68`，不能当作这些后续修复重新实测的结果。
+[源码对应记录](source-equivalence.json)逐项核对 158 个运行时文件：156 个与历史实验源码相同，差异仅在 MCP 客户端与 AppWorld 的 Python 启动环境修复；依赖也有明确安全更新。历史模型成绩仍归属 `a7b0f68`，包括当时在 Windows 执行的 AppWorld 实验，不能当作这些后续修复重新实测的结果。
 
 本次不调用付费模型，不重跑完整 AppWorld，不把摘要复算写成新的官方评分。最终提交的远端结果见 [GitHub CI](https://github.com/666666999999666/TARS-Agent/actions/workflows/ci.yml)，合并要求最新候选全部门槛通过。
 
-完成下面的 MCP 与依赖修复后，公开候选第二轮本地完整 QA **全部门槛通过**：1357 passed、4 skipped、11 deselected；行覆盖率 **83.94%**、分支 **69.36%**、综合 **80.74%**。四个跳过项为三个明确的 POSIX 用例和一个既有 Windows 符号链接环境限制。静态检查、类型检查、文档、覆盖率、构建、归档、Bandit、实际 HEAD 历史扫描、pip/npm 审计均通过；后续仅补充本段结果说明。
+完成下面的 MCP 与依赖修复后，首个 PR 发布前的公开候选第二轮本地完整 QA **全部门槛通过**：1357 passed、4 skipped、11 deselected；行覆盖率 **83.94%**、分支 **69.36%**、综合 **80.74%**。四个跳过项为三个明确的 POSIX 用例和一个既有 Windows 符号链接环境限制。静态检查、类型检查、文档、覆盖率、构建、归档、Bandit、实际 HEAD 历史扫描、pip/npm 审计均通过。该轮属于原公开候选的本地证据，不能代替本轮 AppWorld 与跨平台测试辅助函数修复后的验收。
 
-同一轮最终 wheel 与独立安装副本的 SHA256 完全一致。Windows 新建原生虚拟环境安装锁定依赖后，四个命令入口、数据库资源、打包 worker 及 Web smoke 通过，模型请求为零。这是本地安装 smoke，完整 Core/Docker 安装仍由下面的 Ubuntu CI 门槛验证。
+上述候选同一轮最终 wheel 与独立安装副本的 SHA256 完全一致。Windows 新建原生虚拟环境安装锁定依赖后，四个命令入口、数据库资源、打包 worker 及 Web smoke 通过，模型请求为零。这是本地安装 smoke，完整 Core/Docker 安装仍由下面的 Ubuntu CI 门槛验证。
 
-公开候选首轮本地 QA 的测试为 **1355 passed、1 skipped、11 deselected**，覆盖率为行 83.88%、分支 69.33%、综合 80.69%。构建、Bandit、内容扫描和 npm 审计通过，但 pip-audit 在 PyJWT 2.14.0、urllib3 2.7.0 中发现四项漏洞，因此该轮完整 QA **失败**，原记录保留。
+首个 PR 发布前的公开候选首轮本地 QA 的测试为 **1355 passed、1 skipped、11 deselected**，覆盖率为行 83.88%、分支 69.33%、综合 80.69%。构建、Bandit、内容扫描和 npm 审计通过，但 pip-audit 在 PyJWT 2.14.0、urllib3 2.7.0 中发现四项漏洞，因此该轮完整 QA **失败**，原记录保留。
 
 随后只更新两个锁定依赖版本：运行时 PyJWT 2.15.1、审计工具链 urllib3 2.8.0，并声明对应安全下限，其他锁定包版本不变；更新后独立依赖审计未发现已知漏洞。[PyJWT 官方修复说明](https://github.com/jpadilla/pyjwt/releases/tag/2.15.1)和 [urllib3 官方安全说明](https://github.com/urllib3/urllib3/releases/tag/2.8.0)给出修复范围。这属于发布时的安全维护，不能改写历史实验的依赖版本。
 
 MCP 旧实现把虚拟环境 Python 的符号链接转换为基础解释器路径，可能丢失虚拟环境依赖。修复保留实际启动入口，并继续使用解析后的目标进行现有路径检查。新增测试在旧实现上得到 2 failed；修复后与原 MCP 单元和集成测试合计 20 passed。三个 POSIX 真实虚拟环境/符号链接用例在 Windows 明确跳过，须由 Ubuntu CI 实际运行；没有通过给集成测试额外注入依赖路径来隐藏缺陷。
 
-本机 Docker Desktop 因旧套接字无法访问而启动失败，本轮本地不能新增真实 Docker 或完整 Core 安装通过结论。PR 的 Ubuntu CI 必须真实执行崩溃恢复、多实例隔离、路径边界，以及检出目录外的锁定依赖独立安装；检查四个入口、数据库、Core、worker、Web、进程端口收尾和零模型请求，不能以跳过代替通过。原验证器保持不变。
+首个 PR 的 [Ubuntu Python CI](https://github.com/666666999999666/TARS-Agent/actions/runs/37041400253)（run `37041400253`、head `111b0f7`）**失败**：5 failed、1342 passed、4 skipped、11 deselected、10 errors。归档日志显示，多个 Core/daemon 子进程从系统目录加载 `typing_extensions`，报 `ImportError: cannot import name 'Sentinel'`；其测试辅助函数在 POSIX 也无条件选择并解析 `sys._base_executable`，绕过了虚拟环境入口。原 CI 附件已在本地归档，未作为公开原始日志提交。归档未覆盖每项失败的完整子进程 stderr，因此尚未逐项确认所有失败都来自同一根因。
+
+本轮修复让测试辅助函数在 POSIX 保留 `sys.executable`，继续使用当前虚拟环境；Windows 保留已有的基础解释器与原生进程句柄方案。AppWorld 的 `python_environment()` 也修复同类问题：POSIX 保留虚拟环境 Python 入口，Windows 仍解析基础解释器路径。这两处改动属于后续启动环境修复，没有重跑付费模型或改写原 Windows AppWorld 成绩。本轮专项检查与最新完整 CI 结果须另行记录；最新 Windows/Ubuntu 及相关 CI 仍待验证，不能沿用先前的本地通过记录。
+
+首个 PR 发布前，本机 Docker Desktop 因旧套接字无法访问而启动失败，该轮本地不能新增真实 Docker 或完整 Core 安装通过结论。PR 的 Ubuntu CI 必须真实执行崩溃恢复、多实例隔离、路径边界，以及检出目录外的锁定依赖独立安装；检查四个入口、数据库、Core、worker、Web、进程端口收尾和零模型请求，不能以跳过代替通过。原验证器保持不变。
+
+首个 PR Ubuntu 失败后，测试启动辅助程序的回归在旧实现上得到 4 failed；修复后相关 MCP/IPC 测试为 20 passed、4 个 POSIX 用例在 Windows 跳过。AppWorld 平台启动回归先复现 1 failed，修复后与 worker、恢复及对照测试合计 43 passed、1 个 POSIX 用例跳过。两组均为离线检查；最新提交仍必须取得自己的完整 CI 结果。
 
 ## 历史冻结候选的完整检查
 

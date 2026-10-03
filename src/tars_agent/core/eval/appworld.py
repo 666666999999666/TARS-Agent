@@ -651,8 +651,12 @@ def dependency_fingerprint(site_packages: Path) -> str:
 
 
 def python_environment() -> dict[str, str]:
-    # The uv venv python.exe can be a trampoline. Own the base interpreter process itself.
-    executable = Path(getattr(sys, "_base_executable", sys.executable)).resolve(strict=True)
+    # Windows uv launchers need a native process handle. POSIX venv entrypoints
+    # must retain their symlink path so Python loads that environment's packages.
+    executable = (
+        Path(getattr(sys, "_base_executable", sys.executable)).resolve(strict=True)
+        if os.name == "nt" else Path(sys.executable)
+    )
     site_packages = Path(str(importlib.metadata.distribution("mcp").locate_file(""))).resolve()
     return {
         "base_executable": str(executable),
