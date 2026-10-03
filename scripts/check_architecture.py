@@ -22,6 +22,11 @@ _WEB_CORE_FILE_IMPORT_ALLOWLIST: dict[
     str,
     dict[str, frozenset[str]],
 ] = {
+    "web/app.py": {
+        "tars_agent.core.transport.socket_client": frozenset(
+            {"IpcError", "IpcDisconnectedError"}
+        ),
+    },
     "web/cli.py": {
         "tars_agent.core.config": frozenset({"get_config"}),
     }

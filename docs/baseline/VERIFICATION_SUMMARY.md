@@ -1,6 +1,6 @@
 # TARS-Agent V1 基准记录
 
-> 本页保留早期 V1 的历史记录。`job-baseline-20260919` 的当前结果以[求职学习基准说明](JOB_BASELINE.md)为准；下文的旧验收和旧覆盖率不能替代新提交的检查或未完成的真实场景。
+> 本页保留早期 V1 的历史记录；`job-baseline-20260919` 的结果见[历史基准说明](JOB_BASELINE.md)，合并后 main 的当前结果见[工程验证](../evaluation/VALIDATION.md)。下文“当前”“本次”均指早期 V1，旧验收和旧覆盖率不能替代新提交的检查。
 
 作者及维护者：liaoqizai。包版本为 `0.8.0`，基准标签为 `baseline-v1`。项目许可见 [LICENSE](../../LICENSE)。
 

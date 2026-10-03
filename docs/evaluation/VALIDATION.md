@@ -1,12 +1,34 @@
-# 工程验证：当前公开候选与历史证据
+# 工程验证：合并后 main 与历史证据
 
 本次公开版本保留运行时修复和评测实现，公开技术报告与脱敏摘要，不发布原始应用数据、模型轨迹、账本、凭证或本机路径。历史模型实验来自本地冻结源码 `a7b0f68a7aefd33b47eb93701bbdbd51a0a70378`；公开发布是独立提交历史，不让读者把这个本地提交号当作可检出的公开版本。
 
-## 当前公开候选
+## 合并后 main
+
+2026-10-03 核实 GitHub main 为 `917d0e957f6653719e8f50a5993b13c34619a661`，版本仍为 **0.8.0**。PR #1 已合并；PR head `31575d55` 的 [CI run 37124945865](https://github.com/666666999999666/TARS-Agent/actions/runs/37124945865) 与合并后 main 的 [CI run 37126210739](https://github.com/666666999999666/TARS-Agent/actions/runs/37126210739) 均成功，Windows、Ubuntu、Web 三组 job 均为 success。
+
+main 的 Ubuntu job 实际执行了真实 Docker E2E、Core 崩溃回收与实例隔离、worker 路径边界、检出目录外的完整独立安装；Web job 执行 Core → FastAPI → SSE → React 的浏览器流程。这些检查补齐对应环境门槛，不代表新的真实模型成绩，也不覆盖 Linux AppWorld 调度器崩溃恢复。
+
+本次收尾修复以 `917d0e9` 为基线。该提交的 CI 成功不能代替本次 patch 的 CI；历史标签保持原归属。
+
+## 2026-10-03 本地收尾小修
+
+本节对应 `917d0e9` 的公开源码加本地修改，不是新提交 CI 或完整 QA。没有安装依赖、调用模型、重跑 AppWorld 官方评分或续跑旧 `test_normal`。版本保持 0.8.0。
+
+| 修改与复现 | 修复后的证据 | 限制 |
+| --- | --- | --- |
+| 显式 retry 在 SQLite 提交期间取消 caller，事务提交后 Run 留在 queued；关闭时未接管它，关闭后也仍接受 retry。真实 Database 回归旧代码 3 failed | 复用 Runtime 的 `_submissions`、完成回调、`shield` 与 shutdown；三个回归通过。相关 Runtime、取消、supervisor、SocketServer、V2 IPC 集合 **41 passed** | 显式 retry 会创建新 attempt，不新增 retry 幂等保证；不能回滚已有工具副作用 |
+| 静默 SSE transport 下取消流，`Queue.get()` 仍 pending；旧代码 1 failed | finally 取消并等待 getter。普通查询另将不存在资源映射 404、Core 不可用映射 503；404 旧回归 2 failed。Web 与架构集合 **37 passed** | 保留 keepalive、overflow、cursor；不是新的前端浏览器验收 |
+| POSIX 只发送 TERM 就退休记录，受控 Linux 子进程仍存活 | TERM 最多等 5 秒，未退出时重新核对身份再 KILL、最多再等 5 秒；无法确认退出就停止恢复。AppWorld 进程/恢复/worker 加 QA 门槛与公开摘要回归共 **67 passed、2 skipped** | 两个 skip 是要求 Linux `/proc` 的真实进程用例；完整项目环境仍需 Linux Python 3.12 |
+
+现有 WSL Ubuntu 的真实受控子进程专项通过：正常 TERM 退出码 −15，忽略 TERM 后 KILL 退出码 −9。已有环境只有 Python 3.10，探针加载当前源码中仅依赖标准库的身份/退出函数原文，不使用模型或 AppWorld；不能算 Python 3.12 完整项目或真实 AppWorld 崩溃恢复全链通过。回归另外确认身份/命令变化、查询失败或强杀后仍存活时保留 running，不清理旧 world、不启动下一 attempt、不改 checkpoint。
+
+本地 `qa.py quick` 的锁文件、全局 Ruff、严格 Mypy、协议、架构、文档、工作流与空白检查通过。CI 仅删除 quick 已执行的三个重复步骤，原检查要求保留。公开摘要离线复算通过，模型成绩仍属于 `a7b0f68`；`source-equivalence.json` 的 158 文件与指纹重新核对为 main `917d0e9`，没有改成当前 patch 的指纹。首次 QA 辅助回归因临时目录位于仓库内、Git 向上发现父仓库而失败；限定 Git 搜索边界后通过，未修改该测试或降低门槛。本轮未重跑 coverage/full、包安装、真实 Docker、浏览器或人工 TUI 验收。
+
+## 公开发布准备的历史检查
 
 公开候选的 QA、覆盖率、构建、安全审计、独立安装以及 PR/合并后 CI 必须分别记录最新提交结果。发布准备期间不将尚未完成的检查写成通过；下列历史数字不代替当前候选验收。
 
-[源码对应记录](source-equivalence.json)逐项核对 158 个运行时文件：156 个与历史实验源码相同，差异仅在 MCP 客户端与 AppWorld 的 Python 启动环境修复；依赖也有明确安全更新。历史模型成绩仍归属 `a7b0f68`，包括当时在 Windows 执行的 AppWorld 实验，不能当作这些后续修复重新实测的结果。
+[源码对应记录](source-equivalence.json)绑定公开 main `917d0e9`，逐项核对 158 个运行时文件：156 个与历史实验源码相同，差异仅在 MCP 客户端与 AppWorld 的 Python 启动环境修复；依赖也有明确安全更新。该记录描述当时的对应关系，后续 retry、SSE 和 worker 退出小修不再与此指纹等价。历史模型成绩仍归属 `a7b0f68`，不能当作后续修复重新实测的结果。
 
 本次不调用付费模型，不重跑完整 AppWorld，不把摘要复算写成新的官方评分。最终提交的远端结果见 [GitHub CI](https://github.com/666666999999666/TARS-Agent/actions/workflows/ci.yml)，合并要求最新候选全部门槛通过。
 
@@ -22,7 +44,7 @@ MCP 旧实现把虚拟环境 Python 的符号链接转换为基础解释器路�
 
 首个 PR 的 [Ubuntu Python CI](https://github.com/666666999999666/TARS-Agent/actions/runs/37041400253)（run `37041400253`、head `111b0f7`）**失败**：5 failed、1342 passed、4 skipped、11 deselected、10 errors。归档日志显示，多个 Core/daemon 子进程从系统目录加载 `typing_extensions`，报 `ImportError: cannot import name 'Sentinel'`；其测试辅助函数在 POSIX 也无条件选择并解析 `sys._base_executable`，绕过了虚拟环境入口。原 CI 附件已在本地归档，未作为公开原始日志提交。归档未覆盖每项失败的完整子进程 stderr，因此尚未逐项确认所有失败都来自同一根因。
 
-本轮修复让测试辅助函数在 POSIX 保留 `sys.executable`，继续使用当前虚拟环境；Windows 保留已有的基础解释器与原生进程句柄方案。AppWorld 的 `python_environment()` 也修复同类问题：POSIX 保留虚拟环境 Python 入口，Windows 仍解析基础解释器路径。这两处改动属于后续启动环境修复，没有重跑付费模型或改写原 Windows AppWorld 成绩。本轮专项检查与最新完整 CI 结果须另行记录；最新 Windows/Ubuntu 及相关 CI 仍待验证，不能沿用先前的本地通过记录。
+发布准备修复让测试辅助函数在 POSIX 保留 `sys.executable`，继续使用当前虚拟环境；Windows 保留已有的基础解释器与原生进程句柄方案。AppWorld 的 `python_environment()` 也修复同类问题：POSIX 保留虚拟环境 Python 入口，Windows 仍解析基础解释器路径。这两处属于发布时的启动环境修复，没有重跑付费模型或改写原 Windows AppWorld 成绩。该候选及合并后 main 已取得上节列出的完整 CI 成功；旧 Ubuntu 失败仍归属 `111b0f7`。
 
 首个 PR 发布前，本机 Docker Desktop 因旧套接字无法访问而启动失败，该轮本地不能新增真实 Docker 或完整 Core 安装通过结论。PR 的 Ubuntu CI 必须真实执行崩溃恢复、多实例隔离、路径边界，以及检出目录外的锁定依赖独立安装；检查四个入口、数据库、Core、worker、Web、进程端口收尾和零模型请求，不能以跳过代替通过。原验证器保持不变。
 
@@ -77,4 +99,4 @@ DeepSeek 真实接入共五次 HTTP 尝试：四次完整响应形成读、写�
 
 内部历史 48 次为单 Agent 24/24、多 Agent 23/24；完整 dev 配对 A 20/57、B 54/57。官方分数、运行状态、负面案例和成本分别见[结果报告](RESULTS.md)。旧 `test_normal` 的 63/168 题仍未完成，没有完整 TGC/SGC。
 
-Linux AppWorld 调度器崩溃后的真实进程退出确认尚缺专项验证。本地测试、Windows 真实恢复或 Linux 文件沙箱恢复通过，均不能代替这项 AppWorld 调度器证据。本轮也没有新增长对话压缩实测或生产环境验收。
+完整项目环境中，Linux AppWorld 调度器崩溃后旧 worker 退出与恢复 attempt 的全链验证仍未完成。上文受控 Linux 进程探针、Windows 真实恢复和 Linux 文件沙箱恢复均不能代替这项 AppWorld 调度器证据。本轮也没有新增长对话压缩实测或生产环境验收。

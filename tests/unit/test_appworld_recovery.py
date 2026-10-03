@@ -252,6 +252,30 @@ async def test_resume_after_canonical_publish_before_checkpoint_does_not_overwri
     assert canonical.stat().st_mtime_ns == first_mtime
 
 
+async def test_unconfirmed_old_worker_blocks_world_cleanup_and_the_next_attempt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    batch = Batch(tmp_path, monkeypatch, count=1)
+    batch.behavior = "interrupt"
+    assert (await batch.run()).benchmark["complete"] is False
+    checkpoint = batch.artifacts / "checkpoint.json"
+    original = checkpoint.read_bytes()
+    worlds_before = FakeWorld.serial
+
+    async def refuse_recovery(directory: Path) -> None:
+        raise RuntimeError("AppWorld worker exit was not confirmed; refusing recovery")
+
+    async def unexpected_world_cleanup(world: FakeWorld) -> None:
+        pytest.fail("old world must remain intact while its worker exit is unconfirmed")
+
+    monkeypatch.setattr(appworld, "stop_recorded_worker", refuse_recovery)
+    monkeypatch.setattr(FakeWorld, "close", unexpected_world_cleanup)
+    with pytest.raises(RuntimeError, match="exit was not confirmed"):
+        await batch.run()
+    assert checkpoint.read_bytes() == original
+    assert len(batch.calls) == 1 and FakeWorld.serial == worlds_before
+
+
 @pytest.mark.parametrize("behavior, complete, calls", [("save_once", True, 2), ("save_failure", False, 2)])
 async def test_save_failure_retires_world_and_respects_one_infrastructure_retry(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, behavior: str, complete: bool, calls: int,

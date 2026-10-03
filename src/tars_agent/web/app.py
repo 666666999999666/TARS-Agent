@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
+from tars_agent.core.transport.socket_client import IpcDisconnectedError, IpcError
 from tars_agent.web.auth import LocalWebAuth
 from tars_agent.web.core import CoreReader
 
@@ -23,6 +24,18 @@ STATIC_DIR = Path(__file__).with_name("static")
 class BootstrapRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     token: str = Field(min_length=1, max_length=256)
+
+
+async def _query_core[T](operation: Awaitable[T]) -> T:
+    try:
+        return await operation
+    except (IpcDisconnectedError, ConnectionError, TimeoutError):
+        raise HTTPException(status_code=503, detail="Core unavailable") from None
+    except IpcError as exc:
+        # Wire Protocol V2: Session Not Found / Run Not Found.
+        if exc.code in {-32010, -32030}:
+            raise HTTPException(status_code=404, detail="resource not found") from None
+        raise
 
 
 def create_app(
@@ -109,19 +122,19 @@ def create_app(
         limit: Annotated[int, Query(ge=1, le=200)] = 50,
         offset: Annotated[int, Query(ge=0)] = 0,
     ) -> dict[str, Any]:
-        return {"sessions": await core.list_sessions(limit=limit, offset=offset)}
+        return {"sessions": await _query_core(core.list_sessions(limit=limit, offset=offset))}
 
     @app.get("/api/sessions/{session_id}", dependencies=[Depends(require_auth)])
     async def session_detail(
         session_id: str,
     ) -> dict[str, Any]:
-        return await core.get_session(session_id)
+        return await _query_core(core.get_session(session_id))
 
     @app.get("/api/runs/{run_id}", dependencies=[Depends(require_auth)])
     async def run_detail(
         run_id: str,
     ) -> dict[str, Any]:
-        return await core.get_run(run_id)
+        return await _query_core(core.get_run(run_id))
 
     @app.get("/api/events", dependencies=[Depends(require_auth)])
     async def events(

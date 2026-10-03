@@ -46,9 +46,6 @@ jobs:
       - name: Lockfile, Ruff, Mypy and repository checks
         run: uv run --no-sync python scripts/qa.py quick
 
-      - name: Mypy strict
-        run: uv run --no-sync mypy src
-
       - name: Offline tests and coverage gates
         run: uv run --no-sync python scripts/qa.py coverage
 
@@ -114,12 +111,6 @@ jobs:
 
       - name: Offline integration tests
         run: uv run --no-sync pytest tests/integration -m "not integration and not docker" -v
-
-      - name: Verify generated wire protocol
-        run: uv run --no-sync python scripts/gen_protocol_doc.py --check
-
-      - name: Verify persistence and Web adapter boundaries
-        run: uv run --no-sync python scripts/check_architecture.py
 
       - name: Build wheel and source distribution
         run: uv run --no-sync python scripts/qa.py build

@@ -71,4 +71,4 @@ uv run --no-sync python scripts/acceptance_workflows.py --execute --workflow ses
 
 任务等待上限为 180 秒；取消若返回尚未确认，不能计作已停止。结束后只检查并回收本次拥有的进程和容器。`all_nine_complete=true` 只表示这九轮 RPC 工作流通过，不代表正式 CLI、真实 TUI、外部 MCP、安装产物或全部运行环境已通过。
 
-当前结果及仍未验证的范围统一见[验证摘要](VERIFICATION_SUMMARY.md)，本文件不重复记录阶段数字。
+当前结果及仍未验证的范围统一见[工程验证](../evaluation/VALIDATION.md)，[V1 验证摘要](VERIFICATION_SUMMARY.md)仅记录历史结果，本文件不重复阶段数字。

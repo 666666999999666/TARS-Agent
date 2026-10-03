@@ -7,11 +7,11 @@
 在项目根目录运行，输出位置必须是仓库外的新空目录：
 
 ```powershell
-uv run --no-sync python scripts/final_delivery.py --main-ref main --stable-tag baseline-v1 --output ../TARS-Agent-export --preflight
-uv run --no-sync python scripts/final_delivery.py --main-ref main --stable-tag baseline-v1 --output ../TARS-Agent-export
+uv run --no-sync python scripts/final_delivery.py --main-ref main --output ../TARS-Agent-export --preflight
+uv run --no-sync python scripts/final_delivery.py --main-ref main --output ../TARS-Agent-export
 ```
 
-没有稳定标签时省略 `--stable-tag`，导出结果会明确标记为候选快照。可用 `--acceptance-summary <文件>` 附带经过脱敏的实际验收 JSON；缺省时清单标明未提供，不能把源码恢复检查当作运行验收。
+默认省略 `--stable-tag`，导出结果会明确标记为候选快照。仅在标签确实指向所选 main 提交时显式传入；`baseline-v1` 是历史标签，不能用于当前 main，也不要移动它。可用 `--acceptance-summary <文件>` 附带经过脱敏的实际验收 JSON；缺省时清单标明未提供，不能把源码恢复检查当作运行验收。
 
 ## 检查内容
 

@@ -50,6 +50,7 @@ DEEPSEEK_PRIVATE_ENV = Path(__file__).resolve().parents[4] / "build/internship/d
 _PAUSING_MODEL_REASONS = frozenset({
     "llm_rate_limited", "llm_model_mismatch", "llm_request_budget_exhausted",
 })
+_WORKER_EXIT_WAIT_S = 5.0
 
 
 def load_deepseek_config(
@@ -749,6 +750,26 @@ def _matching_workers(argv: list[str]) -> list[int]:
     return result
 
 
+def _recorded_worker_running(identity: dict[str, Any]) -> bool:
+    current = process_identity(int(identity["pid"]))
+    if current is None or current["started"] != identity["started"]:
+        return False  # An absent process or a reused PID proves this worker has exited.
+    if current != identity:
+        raise RuntimeError("AppWorld worker identity changed; refusing recovery")
+    return True
+
+
+async def _wait_recorded_worker_exit(identity: dict[str, Any]) -> bool:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + _WORKER_EXIT_WAIT_S
+    while await asyncio.to_thread(_recorded_worker_running, identity):
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            return False
+        await asyncio.sleep(min(0.05, remaining))
+    return True
+
+
 async def stop_recorded_worker(directory: Path) -> None:
     record_path = directory / "process.json"
     if not record_path.exists():
@@ -761,9 +782,8 @@ async def stop_recorded_worker(directory: Path) -> None:
         raise RuntimeError("recorded worker command does not belong to this attempt")
     identity = record.get("identity")
     if identity is not None:
-        current = await asyncio.to_thread(process_identity, int(identity["pid"]))
-        if current is None or current != identity:
-            return  # A reused PID is not this attempt's worker.
+        if not await asyncio.to_thread(_recorded_worker_running, identity):
+            return
     else:
         matches = await asyncio.to_thread(_matching_workers, record["argv"])
         if len(matches) > 1:
@@ -773,8 +793,8 @@ async def stop_recorded_worker(directory: Path) -> None:
         identity = await asyncio.to_thread(process_identity, matches[0])
         if identity is None:
             return
-    # Check the creation identity again immediately before terminating only this worker tree.
-    if await asyncio.to_thread(process_identity, int(identity["pid"])) != identity:
+    # Check the creation identity again immediately before terminating this worker.
+    if not await asyncio.to_thread(_recorded_worker_running, identity):
         return
     matches_command = (
         identity.get("command_line") == subprocess.list2cmdline(expected_argv)
@@ -788,7 +808,19 @@ async def stop_recorded_worker(directory: Path) -> None:
     else:
         import signal
 
-        os.kill(int(identity["pid"]), signal.SIGTERM)
+        try:
+            os.kill(int(identity["pid"]), signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        if not await _wait_recorded_worker_exit(identity):
+            # A PID can be reused during the grace period. Recheck before escalation.
+            if await asyncio.to_thread(_recorded_worker_running, identity):
+                try:
+                    os.kill(int(identity["pid"]), int(getattr(signal, "SIGKILL", 9)))
+                except ProcessLookupError:
+                    pass
+            if not await _wait_recorded_worker_exit(identity):
+                raise RuntimeError("AppWorld worker exit was not confirmed; refusing recovery")
     write_json(record_path, {**record, "phase": "retired", "identity": identity})
 
 

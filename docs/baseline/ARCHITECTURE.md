@@ -2,7 +2,7 @@
 
 先记住主线：你通过 CLI 或 TUI 提交任务，后台 Core 接收并保存它，AgentLoop 请求模型；模型要求调用工具时，程序检查参数和权限，执行工具，再把真实结果交回模型。运行结束后，负责这次运行的对象先保存结果，再通知客户端。
 
-日常配置和启动见 [README](../../README.md) 与 [RUNBOOK](../../RUNBOOK.md)，实际验收结果见 [验证摘要](VERIFICATION_SUMMARY.md)。本页只解释最终代码，不把完成重构等同于你已经掌握全部实现。
+日常配置和启动见 [README](../../README.md) 与 [RUNBOOK](../../RUNBOOK.md)，当前验收结果见 [工程验证](../evaluation/VALIDATION.md)，[V1 验证摘要](VERIFICATION_SUMMARY.md)仅为历史资料。本页解释主流程，不把代码已有实现等同于你已经掌握。
 
 ## 1. 用一个文件任务串起主流程
 
@@ -49,16 +49,17 @@
 | `web/` | 提供可选的本地只读查询接口；仓库顶层 `web/` 保存前端源码。 |
 | `core/eval/`、`core/observability/`、`core/trace/` | 评测、汇总运行信息和排查过程，不决定运行是否成功。 |
 
-### 四种常被混叫成“任务”的东西
+### 会话、输入轮次和执行记录
 
 | 概念 | 可以怎样理解 | 保存位置与负责者 |
 | --- | --- | --- |
 | Session | 可以连续交流的一段会话，固定一个工作目录。 | `state.db`；RuntimeService 管理，状态为 `ready/running/closed`。 |
+| Turn | 一条被接受的用户输入；重试仍属于这一轮。 | `state.db` 的 `turns`；`session_id + client_message_id` 唯一约束用于提交防重。 |
 | Run | 一次实际执行，例如用户发来的一条任务，或它派生的子运行。 | `state.db`；主 Run 由 RuntimeService、子 Run 由 BackgroundTaskRegistry 管理；状态为 `queued/running/succeeded/failed/cancelled/interrupted`。 |
 | 计划项 Task | 模型记下的“先读文件，再写摘要”这类待办。 | 当前 Run 的 `.tasks/task_*.json`；TaskManager 管理。完成计划项不会把 Run 自动标为成功。 |
 | `asyncio.Task` | Python 当前进程里正在执行的协程句柄。 | 内存；RunSupervisor 或子运行注册表用它等待和取消。进程重启不会恢复这个对象本身。 |
 
-SQLite 保存会话、运行、消息和可回放事件。计划项、笔记和日志各有用途，“SQLite 是运行状态的依据”不等于所有内容必须存在 SQLite。
+一个 Session 可以有多个 Turn；同一个 Turn 显式重试时产生新的 Run，以 `attempt` 和 `retry_of_run_id` 记录关系。普通输入防重不等于显式 retry 防重，也不保证外部工具副作用恰好一次。SQLite 保存会话、运行、消息和可回放事件。计划项、笔记和日志各有用途，“SQLite 是运行状态的依据”不等于所有内容必须存在 SQLite。
 
 - 默认运行根为 `~/.tars-baseline`，也可由真实进程环境中的 `TARS_HOME` 指定。
 - `artifacts/sessions/<session_id>/notes.md` 由 [ArtifactStore](../../src/tars_agent/core/artifacts.py) 读写，是后续请求可读取的补充内容，不是聊天历史，也不会自动进入别的会话。

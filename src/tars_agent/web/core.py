@@ -88,6 +88,7 @@ class SocketCoreReader:
         client.on_event_envelope(receive)
         await client.connect()
         loop_task = asyncio.create_task(client.run_event_loop())
+        get_task: asyncio.Task[dict[str, Any]] | None = None
         try:
             await client.send_command(
                 "event.subscribe",
@@ -138,6 +139,10 @@ class SocketCoreReader:
                 }
                 return
         finally:
+            if get_task is not None:
+                if not get_task.done():
+                    get_task.cancel()
+                await asyncio.gather(get_task, return_exceptions=True)
             await client.close()
             loop_task.cancel()
             await asyncio.gather(loop_task, return_exceptions=True)

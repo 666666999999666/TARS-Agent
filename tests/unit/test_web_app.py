@@ -5,8 +5,11 @@ import json
 from collections.abc import AsyncIterator
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
+from tars_agent.core.runtime.service import RUN_NOT_FOUND, SESSION_NOT_FOUND
+from tars_agent.core.transport.socket_client import IpcDisconnectedError, IpcError
 from tars_agent.web.app import COOKIE_NAME, create_app
 from tars_agent.web.auth import LocalWebAuth
 
@@ -135,6 +138,80 @@ def test_api_requires_cookie_and_exposes_only_read_routes() -> None:
         "get_session",
         "get_run",
     }
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "code"),
+    [
+        ("/api/sessions/missing", "get_session", SESSION_NOT_FOUND),
+        ("/api/runs/missing", "get_run", RUN_NOT_FOUND),
+    ],
+)
+def test_missing_core_resource_returns_404_without_error_details(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    method: str,
+    code: int,
+) -> None:
+    client, core, _ = _authenticated_client()
+
+    async def fail(*_args: Any, **_kwargs: Any) -> Any:
+        raise IpcError(code, "private Core details", data={"token": "private"})
+
+    monkeypatch.setattr(core, method, fail)
+    with client:
+        response = client.get(path)
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "resource not found"}
+
+
+@pytest.mark.parametrize(
+    ("path", "method"),
+    [
+        ("/api/sessions", "list_sessions"),
+        ("/api/sessions/sess-one", "get_session"),
+        ("/api/runs/run-one", "get_run"),
+    ],
+)
+@pytest.mark.parametrize(
+    "error",
+    [
+        IpcDisconnectedError("private Core details"),
+        ConnectionRefusedError("private Core details"),
+        TimeoutError("private Core details"),
+    ],
+)
+def test_unavailable_core_returns_503_without_error_details(
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    method: str,
+    error: Exception,
+) -> None:
+    client, core, _ = _authenticated_client()
+
+    async def fail(*_args: Any, **_kwargs: Any) -> Any:
+        raise error
+
+    monkeypatch.setattr(core, method, fail)
+    with client:
+        response = client.get(path)
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Core unavailable"}
+
+
+def test_other_core_protocol_errors_keep_existing_error_behavior(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client, core, _ = _authenticated_client()
+
+    async def fail(*_args: Any, **_kwargs: Any) -> Any:
+        raise IpcError(-32603, "Core request failed")
+
+    monkeypatch.setattr(core, "list_sessions", fail)
+    with client, pytest.raises(IpcError):
+        client.get("/api/sessions")
 
 
 def test_host_and_origin_are_enforced() -> None:

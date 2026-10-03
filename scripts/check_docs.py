@@ -9,7 +9,11 @@ REQUIRED = ("README.md", "RUNBOOK.md", "WIRE_PROTOCOL.md", "LICENSE",
             "docs/baseline/VERIFICATION_SUMMARY.md", "docs/baseline/ACCEPTANCE.md",
             "docs/baseline/ARCHITECTURE.md", "docs/baseline/DEMOS.md",
             "docs/baseline/LIMITATIONS.md", "docs/baseline/MODEL_SETUP.md",
-            "docs/baseline/REAL_WORKFLOWS.md", "scripts/FINAL_DELIVERY.md")
+            "docs/baseline/REAL_WORKFLOWS.md", "docs/baseline/JOB_BASELINE.md",
+            "docs/evaluation/README.md", "docs/evaluation/VALIDATION.md",
+            "docs/evaluation/EXPERIMENT.md", "docs/evaluation/RESULTS.md",
+            "docs/evaluation/REPRODUCE.md", "docs/evaluation/results.json",
+            "docs/evaluation/source-equivalence.json", "scripts/FINAL_DELIVERY.md")
 
 
 def main() -> int:

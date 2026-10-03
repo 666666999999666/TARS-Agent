@@ -4,7 +4,7 @@
 
 自定义 Anthropic 兼容端点必须使用专用密钥；不要把密钥写进代码、Git、截图或验收报告。官方服务密钥不会自动发往自定义端点。
 
-本机本次真实验收请求的模型名为 `deepseek-flash`，端点为 `https://api.deepseek.com/anthropic`。这是实际请求配置，不能据此推定未返回的底层型号或价格。调用结果、失败和环境限制见[验证摘要](VERIFICATION_SUMMARY.md)。
+历史 V1 验收请求的模型名为 `deepseek-flash`，端点为 `https://api.deepseek.com/anthropic`。这是当时的请求配置，不能据此推定未返回的底层型号或当前价格。历史结果见[验证摘要](VERIFICATION_SUMMARY.md)，当前工程结果与冻结实验归属见[工程验证](../evaluation/VALIDATION.md)，AppWorld 专用配置见[复现说明](../evaluation/REPRODUCE.md)。本页作为配置导航保留；通用配置示例只在运行手册维护。
 
 请求限额默认 100，按同一账本累计，重启不重置。调整为正整数或 `unlimited` 只能在受信配置或真实进程环境中进行，由项目所有者按当前使用需求决定。
 

@@ -691,6 +691,20 @@ class RuntimeService:
         *,
         confirm_side_effects: bool = False,
     ) -> SubmitRunResult:
+        if self._closed:
+            raise HandlerError(RUN_INVALID_STATE, "runtime is shutting down")
+        # Retry has the same durable commit-and-schedule ownership as submit:
+        # disconnecting cancels the caller's wait, never an accepted attempt.
+        operation = asyncio.create_task(self._retry_run_locked(
+            run_id, confirm_side_effects=confirm_side_effects,
+        ), name=f"retry:{run_id}")
+        self._submissions.add(operation)
+        operation.add_done_callback(self._submission_finished)
+        return await asyncio.shield(operation)
+
+    async def _retry_run_locked(
+        self, run_id: str, *, confirm_side_effects: bool,
+    ) -> SubmitRunResult:
         original = await self.get_run(run_id)
         lock = self._submission_locks.setdefault(original.session_id, asyncio.Lock())
         async with lock:

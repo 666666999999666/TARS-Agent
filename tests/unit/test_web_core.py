@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
+
+import pytest
 
 from tars_agent.web import core as web_core
 
@@ -100,3 +103,58 @@ async def test_upstream_overflow_is_terminal_and_keeps_resume_cursor(monkeypatch
             "last_cursor": 75,
         }
     ]
+
+
+async def test_cancelled_silent_stream_reaps_pending_queue_getter(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    getter_started = asyncio.Event()
+    getter_tasks: list[asyncio.Task[Any]] = []
+    closed = asyncio.Event()
+    loop_stopped = asyncio.Event()
+
+    class ObservedQueue(asyncio.Queue[dict[str, Any]]):
+        async def get(self) -> dict[str, Any]:
+            task = asyncio.current_task()
+            assert task is not None
+            getter_tasks.append(task)
+            getter_started.set()
+            return await super().get()
+
+    class SilentSocketClient(_BurstSocketClient):
+        async def send_command(
+            self,
+            _method: str,
+            _params: dict[str, Any],
+        ) -> dict[str, Any]:
+            return {"subscription_id": "subscription-1"}
+
+        async def run_event_loop(self) -> None:
+            try:
+                await asyncio.Future()
+            finally:
+                loop_stopped.set()
+
+        async def close(self) -> None:
+            closed.set()
+
+    monkeypatch.setattr(web_core, "SocketClient", SilentSocketClient)
+    monkeypatch.setattr(web_core.asyncio, "Queue", ObservedQueue)
+    reader = web_core.SocketCoreReader("127.0.0.1", 7437)
+    stream = reader.stream_events("session-1", after_cursor=10)
+    pending_envelope = asyncio.create_task(anext(stream))
+    try:
+        await asyncio.wait_for(getter_started.wait(), timeout=1.0)
+        pending_envelope.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await pending_envelope
+        await stream.aclose()
+
+        assert closed.is_set()
+        assert loop_stopped.is_set()
+        assert getter_tasks and all(task.done() for task in getter_tasks)
+    finally:
+        # Reap the reproduced leak even when the assertion fails.
+        pending_envelope.cancel()
+        for task in getter_tasks:
+            task.cancel()
+        await asyncio.gather(pending_envelope, *getter_tasks, return_exceptions=True)
+        await stream.aclose()

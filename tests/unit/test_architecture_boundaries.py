@@ -42,6 +42,16 @@ def test_web_cli_has_only_file_scoped_config_exception(tmp_path: Path) -> None:
     assert check(root) == []
 
 
+def test_web_queries_have_file_scoped_transport_error_access(tmp_path: Path) -> None:
+    root = _probe_source(
+        tmp_path,
+        "web/app.py",
+        "from tars_agent.core.transport.socket_client import IpcError, IpcDisconnectedError\n",
+    )
+
+    assert check(root) == []
+
+
 @pytest.mark.parametrize(
     "statement",
     [

@@ -34,4 +34,4 @@ TUI 另行验证：保存笔记，在空闲时执行 `/compact`，按 Ctrl+Q 退
 
 [验收脚本说明](REAL_WORKFLOWS.md)区分真实 CLI 驱动和底层 RPC 工作流。RPC 脚本保留三类各三轮，逐 Run 检查 `terminal_tool_check`；CLI 还要实际运行两种命令、审批、取消、EOF、恢复及退出码，TUI 还要实际操作界面。三者不能互相冒充。
 
-当前演示和验收结果统一见[验证摘要](VERIFICATION_SUMMARY.md)，不在这里复制阶段数字。
+当前演示和验收结果统一见[工程验证](../evaluation/VALIDATION.md)，[V1 验证摘要](VERIFICATION_SUMMARY.md)保留历史归属，不在这里复制阶段数字。
