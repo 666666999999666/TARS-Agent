@@ -9,6 +9,7 @@ from typing import Any, Self
 
 from tars_agent.core.app import CoreApp
 from tars_agent.core.llm.types import LlmResponse, ToolCallBlock
+from tests.integration.offline_core import install_offline_runtime
 
 
 class CrashWindowProvider:
@@ -89,6 +90,7 @@ def main() -> None:
     import tars_agent.core.app as app_module
     import tars_agent.core.runner as runner_module
 
+    install_offline_runtime()
     provider = (
         CrashSubagentProvider
         if os.environ.get("TARS_CRASH_SCENARIO") == "subagent"

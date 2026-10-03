@@ -2,11 +2,13 @@
 
 TARS-Agent 是一个 Python 3.12 本地 Agent 项目：在终端提交任务，由模型决定是否调用工具，工具完成后把真实结果交回模型。代码包含连续对话、会话历史、审批、Docker 工具隔离、子 Agent、MCP 和只读 Web 面板。
 
-**当前保存的是求职学习基准版 `job-baseline-20260919`，不是全部验收完成版。** W01–W04 的实际修复、本机验证和剩余限制见[求职学习基准说明](docs/baseline/JOB_BASELINE.md)。本次正式 CLI 真实模型正常任务为两次通过、一次因请求预算耗尽失败；后者虽然文件正确，仍按失败保留。其他真实用户场景暂未完成，不宣称跨平台或全功能稳定。
+**工程验证和评测入口见[技术报告](docs/evaluation/README.md)。** 本轮包含启动恢复、Skill 明确拒绝、完整审批参数及任务评测。AppWorld 完整 dev 单轮对照中，完成协议提示改进前后分别通过 20/57、54/57 题；结果及负面案例见[评测报告](docs/evaluation/RESULTS.md)，不代表完整 test_normal 成绩或稳定泛化提升。
+
+原 `job-baseline-20260919` 保留在[历史基准说明](docs/baseline/JOB_BASELINE.md)。其中 W01–W04 和正式 CLI 两次通过、一次预算失败属于原版本记录，不替代当前公开候选的验证。
 
 **CLI 和 TUI 都是正式任务入口。** `tars chat` 用于连续对话，`tars run --goal ...` 完成一次任务后退出客户端，`tars-tui` 提供终端界面。三种方式共用后台 Core；关闭客户端不会关闭 Core。
 
-版本可用 `uv run --no-sync tars --version` 查看；本次没有为标签修改软件版本号。当前验证范围以[求职学习基准说明](docs/baseline/JOB_BASELINE.md)为准，[V1 基准记录](docs/baseline/VERIFICATION_SUMMARY.md)保留为历史资料。模型调用按受信配置计量。
+版本可用 `uv run --no-sync tars --version` 查看；本轮没有升级版本号。当前公开候选与历史验证的区别见[工程验证记录](docs/evaluation/VALIDATION.md)，[V1 基准记录](docs/baseline/VERIFICATION_SUMMARY.md)保留为历史资料。模型调用按受信配置计量。
 
 ## 每天怎么用
 
@@ -31,6 +33,7 @@ uv run --no-sync tars run --goal "列出当前工作区的文件，并说明有�
 
 - **Ctrl+Q**：退出界面，后台任务继续。
 - **Ctrl+X**：取消当前任务并等待资源清理；取消超时表示还没有确认结束。
+- 审批时按 **v** 查看完整参数，使用 PgUp/PgDn 或 Ctrl+Home/End 浏览，Esc 返回；查看参数不会批准操作。
 - 重新打开旧会话：先用 `uv run --no-sync tars sessions list` 查 ID，再用 `uv run --no-sync tars chat --resume <session_id>` 或 `uv run --no-sync tars-tui --resume <session_id>`。
 - 结束后台服务：`uv run --no-sync tars core stop`。这会请求停止仍在运行的任务。
 
@@ -66,9 +69,9 @@ CLI/TUI 不需要 Node/npm、Chromium 或 Web 面板。默认数据目录为 `~/
 
 ```powershell
 uv run --no-sync tars core status
-uv run --no-sync tars run status <run_id>
-uv run --no-sync tars run metrics <run_id>
-uv run --no-sync tars run cancel <run_id>
+uv run --no-sync tars run status "<run_id>"
+uv run --no-sync tars run metrics "<run_id>"
+uv run --no-sync tars run cancel "<run_id>"
 ```
 
 模型请求默认按同一个 `TARS_HOME` 下的账本累计，限额为 100 次，重启不会清零。子 Agent、重试和压缩共同计数。调整额度需自己确认成本并修改受信配置，不能把历史验收里的 `unlimited` 当成本次授权。
@@ -78,7 +81,8 @@ uv run --no-sync tars run cancel <run_id>
 先读[架构与阅读顺序](docs/baseline/ARCHITECTURE.md)，沿着一条任务学习：CLI/TUI 收输入 → RuntimeService 保存请求并启动任务 → AgentRunner 准备执行 → AgentLoop 请求模型和调用工具 → RuntimeService 保存结果。CLI 的两种使用方式共用 `cli/client.py`，没有新增第二个 AgentLoop。
 
 - [运行与故障排查](RUNBOOK.md)：安装、配置、真实任务与常见问题。
-- [求职学习基准说明](docs/baseline/JOB_BASELINE.md)和[已知限制](docs/baseline/LIMITATIONS.md)：当前已验证范围、失败与未验证项。
+- [工程验证](docs/evaluation/VALIDATION.md)、[AppWorld 结果](docs/evaluation/RESULTS.md)和[复现说明](docs/evaluation/REPRODUCE.md)：区分公开候选检查、历史实测和未验证项。
+- [历史基准说明](docs/baseline/JOB_BASELINE.md)和[历史限制](docs/baseline/LIMITATIONS.md)：原基准的结果，后续变化以当前工程验证记录为准。
 - [Wire Protocol V2](WIRE_PROTOCOL.md)：需要理解 TUI 与 Core 通信时再看。
 
 开发时使用 `uv sync --locked --group qa --group security`。仅修改或构建 Web 前端时才需要在 `web` 下安装 npm 依赖；浏览器验收另准备 Chromium。测试命令与每次实际结果记录在验证摘要中。

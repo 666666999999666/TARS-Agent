@@ -19,6 +19,8 @@ def render_json_report(result: EvalRunResult) -> str:
 
 # 渲染适合代码仓库留档的 Markdown 汇总与逐次结果
 def render_markdown_report(result: EvalRunResult) -> str:
+    if result.adapter == "appworld":
+        return _appworld_report(result)
     summary = result.summary
     pass_rate = "—" if summary.pass_rate is None else f"{summary.pass_rate:.1%}"
     dirty = (
@@ -97,6 +99,39 @@ def render_markdown_report(result: EvalRunResult) -> str:
             "",
         ]
     )
+    return "\n".join(lines)
+
+
+def _appworld_report(result: EvalRunResult) -> str:
+    benchmark = result.benchmark
+    metrics = benchmark.get("official_metrics")
+    values = metrics if isinstance(metrics, dict) else {}
+    lines = [
+        f"# AppWorld: {result.suite_name}", "",
+        f"- TARS source digest: `{result.provenance.tree_digest}`",
+        f"- Model: `{result.model_config_ref.model}`",
+        f"- AppWorld source: `{benchmark.get('source_ref')}`",
+        f"- Dataset: `{benchmark.get('dataset')}`",
+        f"- Interface: {benchmark.get('interface')}",
+        f"- Complete: {benchmark.get('complete')}",
+        f"- Coverage: {benchmark.get('completed_tasks')}/{benchmark.get('expected_tasks')}", "",
+        "- 官方源列表的场景变体完整："
+        f"{_cell(benchmark.get('official_source_scenarios_complete'))}",
+        "- 本次选集的场景变体完整："
+        f"{_cell(benchmark.get('selected_scenario_variants_complete'))}", "",
+        "| Official metric | Percent |", "| --- | ---: |",
+        f"| Task Goal Completion | {_cell(values.get('task_goal_completion'))} |",
+        f"| Scenario Goal Completion | {_cell(values.get('scenario_goal_completion'))} |", "",
+        "These are official state-based scores. TARS runtime status is recorded separately.",
+        f"Runtime attempts: {result.summary.total_attempts}; "
+        f"normally completed: {result.summary.passed}; failures: {result.summary.failed}; "
+        f"infrastructure errors: {result.summary.errors}.",
+        "Per-task test reports are not displayed or used for prompt tuning.",
+        f"Errors: {_cell(benchmark.get('errors'))}", "",
+    ]
+    note = benchmark.get("scenario_goal_completion_note")
+    if note:
+        lines.extend([str(note), ""])
     return "\n".join(lines)
 
 

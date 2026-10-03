@@ -49,6 +49,8 @@ def cmd_eval_run(
     )
     if summary.failed or summary.errors or summary.skipped:
         raise SystemExit(1)
+    if result.adapter == "appworld" and result.benchmark.get("complete") is not True:
+        raise SystemExit(1)
 
 
 # 校验既有结果 JSON，并按 json 或 Markdown 格式输出报告

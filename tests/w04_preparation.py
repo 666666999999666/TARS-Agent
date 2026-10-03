@@ -53,7 +53,10 @@ def check_demo(workspace: Path, home: Path) -> dict[str, object]:
                 raise DemoPreparationError("preparation requires the credential-free test provider configuration")
             if config.compaction.auto_threshold != 0 or config.trace.include_llm_payload:
                 raise DemoPreparationError("automatic compaction and full model payload tracing must be disabled")
-            skill = SkillLoader(workspace_root=workspace).resolve("demo")
+            try:
+                skill = SkillLoader(workspace_root=workspace).resolve("demo")
+            except (OSError, ValueError) as exc:
+                raise DemoPreparationError("invalid local /demo preset; stop preparation") from exc
             if (skill is None or skill.name != "demo" or len(skill.allowed_tools) != 4
                     or set(skill.allowed_tools) != DEMO_TOOLS
                     or skill.system_prompt_template.strip() != "$ARGUMENTS"):

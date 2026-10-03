@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "suite_id": "tars-appworld-test-normal-v1",
+  "name": "TARS single Agent on the complete AppWorld test_normal split",
+  "description": "Freeze after train/dev verification. Official aggregate scoring only.",
+  "adapter": "appworld",
+  "execution_mode": "agent_tasks",
+  "model_config_ref": {"source": "runtime_config", "reference": "trusted-local-model"},
+  "default_repetitions": 1,
+  "sandbox_mode": "required",
+  "tasks": [],
+  "appworld": {
+    "source_ref": "42b5bcf3cd334fee33f0c37c02070a9f5807add5",
+    "image": "tars-appworld:42b5bcf-sqlmodel044",
+    "data_root": "build/appworld/data-root",
+    "dataset": "test_normal",
+    "workers": 2,
+    "max_steps": 60,
+    "task_timeout_s": 900,
+    "infrastructure_retries": 1
+  }
+}

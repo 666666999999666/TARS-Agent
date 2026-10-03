@@ -21,6 +21,7 @@ class GraderSpec(BaseModel):
         "json_equals",
         "files_equal",
         "pytest",
+        "appworld",
     ]
     path: str | None = None
     expected: JsonValue = None
@@ -43,6 +44,7 @@ class GraderSpec(BaseModel):
 class EvalTaskSpec(BaseModel):
     id: str = Field(min_length=1)
     goal: str = Field(min_length=1)
+    agent_mode: Literal["single", "orchestrated"] = "single"
     timeout_s: float = Field(default=180.0, gt=0)
     repetitions: int | None = Field(default=None, ge=1)
     tool_whitelist: list[str] = Field(default_factory=list)
@@ -75,18 +77,59 @@ class PricingSnapshot(BaseModel):
     models: dict[str, ModelPrice] = Field(min_length=1)
 
 
+class AppWorldSpec(BaseModel):
+    """Explicit opt-in configuration for the isolated external benchmark."""
+
+    source_ref: Literal["42b5bcf3cd334fee33f0c37c02070a9f5807add5"] = (
+        "42b5bcf3cd334fee33f0c37c02070a9f5807add5"
+    )
+    image: str = "tars-appworld:42b5bcf-sqlmodel044"
+    data_root: str
+    dataset: Literal["train", "dev", "test_normal"] = "test_normal"
+    workers: int = Field(default=2, ge=1, le=2)
+    max_steps: int = Field(default=60, ge=1, le=60)
+    task_timeout_s: float = Field(default=900, gt=0, le=900)
+    task_limit: int | None = Field(default=None, ge=1)
+    task_ids: list[str] | None = Field(default=None, min_length=1)
+    infrastructure_retries: Literal[0, 1] = 1
+    paired_comparison: bool = False
+    prompt_variant: Literal["A", "B"] = "A"
+
+    @model_validator(mode="after")
+    def require_complete_test_split(self) -> AppWorldSpec:
+        if self.paired_comparison and (self.dataset == "test_normal" or self.workers != 1):
+            raise ValueError("paired AppWorld comparison requires train/dev and one worker")
+        if self.paired_comparison and self.prompt_variant != "A":
+            raise ValueError("paired comparison fixes both variants internally")
+        if self.dataset == "test_normal" and (
+            self.task_limit is not None or self.task_ids is not None
+        ):
+            raise ValueError("test_normal must use the complete official task list")
+        if self.task_ids is not None:
+            if self.task_limit is not None:
+                raise ValueError("task_ids and task_limit cannot be combined")
+            if len(self.task_ids) != len(set(self.task_ids)):
+                raise ValueError("AppWorld task_ids must be unique")
+            if any(not task_id or task_id != task_id.strip() for task_id in self.task_ids):
+                raise ValueError(
+                    "AppWorld task_ids must be nonempty without surrounding whitespace"
+                )
+        return self
+
+
 class EvalSuiteManifest(BaseModel):
     schema_version: Literal["1.0"] = "1.0"
     suite_id: str = Field(min_length=1)
     name: str = Field(min_length=1)
     description: str = ""
-    adapter: Literal["internal"]
+    adapter: Literal["internal", "appworld"]
     execution_mode: Literal["runtime_cases", "agent_tasks"] | None = None
     model_config_ref: ModelConfigReference
     default_repetitions: int = Field(default=1, ge=1)
     sandbox_mode: Literal["required"] = "required"
     tasks: list[EvalTaskSpec] = Field(default_factory=list)
     pricing_snapshot: PricingSnapshot | None = None
+    appworld: AppWorldSpec | None = None
 
     # 校验套件的适配器专属字段及任务 ID 唯一性
     @model_validator(mode="after")
@@ -98,6 +141,13 @@ class EvalSuiteManifest(BaseModel):
             raise ValueError("internal suite requires execution_mode")
         if self.adapter == "internal" and not self.tasks:
             raise ValueError("internal suite requires at least one task")
+        if self.adapter == "appworld":
+            if self.appworld is None or self.execution_mode != "agent_tasks":
+                raise ValueError("appworld requires appworld settings and agent_tasks mode")
+            if self.tasks or self.default_repetitions != 1:
+                raise ValueError("AppWorld selects official tasks once; manual tasks are forbidden")
+        elif self.appworld is not None:
+            raise ValueError("appworld settings require the appworld adapter")
         if self.execution_mode == "agent_tasks" and any(
             not task.tool_whitelist for task in self.tasks
         ):
@@ -226,7 +276,7 @@ class EvalRunResult(BaseModel):
     suite_id: str
     suite_name: str
     suite_manifest: str
-    adapter: Literal["internal"]
+    adapter: Literal["internal", "appworld"]
     execution_mode: Literal["runtime_cases", "agent_tasks"] | None = None
     started_at: str
     finished_at: str
@@ -237,6 +287,7 @@ class EvalRunResult(BaseModel):
     pricing_snapshot: PricingSnapshot | None = None
     attempts: list[TaskAttemptResult]
     summary: EvalSummary
+    benchmark: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 # 从逐次任务结果计算汇总，通过率以全部计划 attempt 为分母并单列基础设施状态

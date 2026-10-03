@@ -71,8 +71,9 @@ async def test_empty_skill_command_is_rejected_without_starting_a_run(
     )
     try:
         session = await runtime.create_session("chat", workspace_root=tmp_path)
-        with pytest.raises(HandlerError, match="skill name"):
+        with pytest.raises(HandlerError, match="本次任务未启动") as rejected:
             await runtime.submit_message(session.id, content)
+        assert rejected.value.code == -32602
         assert runner.calls == []
         assert (await runtime.get_session(session.id)).status == "ready"
     finally:

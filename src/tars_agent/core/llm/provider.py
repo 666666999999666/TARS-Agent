@@ -6,6 +6,7 @@ import logging
 import math
 import os
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -15,9 +16,16 @@ import httpx
 from tars_agent.core.bus.events import LlmModelSelectedEvent, LlmTokenEvent, LlmUsageEvent
 from tars_agent.core.compact.budget import DEFAULT_CONTEXT_BUDGET
 from tars_agent.core.events.bus import EventBus
-from tars_agent.core.llm.budget import BudgetTransport, ModelRequestBudgetExceeded, RequestLedger
+from tars_agent.core.llm.budget import (
+    BudgetTransport,
+    CostAttempt,
+    ModelRequestBudgetExceeded,
+    RequestLedger,
+    current_cost_attempt,
+)
 from tars_agent.core.llm.types import LlmResponse, ToolCallBlock, UsageStats
 from tars_agent.core.paths import tars_home
+from tars_agent.core.persistence.cost_budget import CostBudgetError, CostLedger
 
 if TYPE_CHECKING:
     from tars_agent.core.config import LlmConfig
@@ -36,6 +44,25 @@ class ProviderConfigurationError(ValueError):
 
 class LlmProtocolError(RuntimeError):
     pass
+
+
+class LlmModelMismatchError(LlmProtocolError):
+    """The service did not identify the explicitly permitted model."""
+
+    def __init__(
+        self, *, expected_model: str | None = None, actual_model: object = None,
+    ) -> None:
+        super().__init__("Service model is missing or differs from expected_model")
+        self.expected_model = expected_model
+        self.actual_model = actual_model if isinstance(actual_model, str) else None
+
+
+class LlmRateLimitError(RuntimeError):
+    """The request cannot proceed within the configured retry/deadline policy."""
+
+    def __init__(self, message: str, *, partial_text: str = "") -> None:
+        super().__init__(message)
+        self.partial_text = partial_text
 
 
 class LlmCallTimeoutError(TimeoutError):
@@ -60,6 +87,35 @@ def _retryable(exc: Exception) -> bool:
     return isinstance(exc, (anthropic.APIConnectionError, httpx.TransportError))
 
 
+def _rate_limited(exc: Exception) -> bool:
+    if not isinstance(exc, anthropic.APIStatusError):
+        return False
+    if exc.status_code in (429, 529):
+        return True
+    # The SDK reports an SSE error with the stream's original HTTP 200 status.
+    body = exc.body
+    error = body.get("error") if isinstance(body, dict) else None
+    return (
+        exc.status_code == 200 and isinstance(error, dict)
+        and error.get("type") in ("rate_limit_error", "overloaded_error")
+    )
+
+
+def _retry_after_s(response: httpx.Response, fallback: float) -> float:
+    value = response.headers.get("retry-after", "")
+    try:
+        delay = float(value)
+    except ValueError:
+        try:
+            date = parsedate_to_datetime(value)
+            if date.tzinfo is None:
+                date = date.replace(tzinfo=UTC)
+            delay = max(0.0, (date - datetime.now(UTC)).total_seconds())
+        except (TypeError, ValueError, OverflowError):
+            return fallback
+    return delay if math.isfinite(delay) and delay >= 0 else fallback
+
+
 class AnthropicProvider:
     def __init__(
         self, model: str, client: Any = None, *, max_tokens: int = 8192,
@@ -69,9 +125,15 @@ class AnthropicProvider:
         pool_timeout_s: float = 10.0, attempts: int = 2, retry_delay_s: float = 1.0,
         request_budget_path: Path | None = None, request_limit: int | None = 100,
         context_budget_tokens: int = DEFAULT_CONTEXT_BUDGET,
+        expected_model: str = "",
+        cost_budget_path: Path | None = None,
     ) -> None:
         if not model.strip() or attempts not in (1, 2):
             raise ProviderConfigurationError("Model must be nonempty and attempts must be 1 or 2")
+        if not isinstance(expected_model, str) or any(c.isspace() for c in expected_model):
+            raise ProviderConfigurationError("Expected model must be a string without whitespace")
+        if expected_model and model.strip() != expected_model:
+            raise ProviderConfigurationError("Requested model must match expected_model")
         if type(context_budget_tokens) is not int or context_budget_tokens <= 0:
             raise ProviderConfigurationError("Context budget must be a positive integer")
         for value in (total_timeout_s, connect_timeout_s, read_timeout_s, write_timeout_s,
@@ -82,12 +144,19 @@ class AnthropicProvider:
             raise ProviderConfigurationError("Request limit must be a positive integer or None")
         self._request_limit = request_limit
         self._model = model.strip()
+        self._expected_model = expected_model
         self._max_tokens = max_tokens
         self._context_budget_tokens = context_budget_tokens
         self._total_timeout_s = total_timeout_s
         self._attempts = attempts
         self._retry_delay_s = retry_delay_s
         self._owns_client = client is None
+        self._cost_ledger = CostLedger(cost_budget_path) if cost_budget_path is not None else None
+        if self._cost_ledger is not None:
+            self._cost_ledger.summary()
+            if (self._model != "deepseek-flash" or self._expected_model != "deepseek-flash"
+                    or (client is None and base_url != "https://api.deepseek.com/anthropic")):
+                raise ProviderConfigurationError("Cost budget requires the fixed DeepSeek profile")
         if client is None:
             dedicated_key = api_key or os.environ.get("TARS_LLM_API_KEY", "")
             endpoint = base_url or _OFFICIAL_BASE_URL
@@ -109,7 +178,9 @@ class AnthropicProvider:
                 connect=connect_timeout_s, read=read_timeout_s,
                 write=write_timeout_s, pool=pool_timeout_s,
             )
-            transport = BudgetTransport(httpx.AsyncHTTPTransport(retries=0), ledger)
+            transport = BudgetTransport(
+                httpx.AsyncHTTPTransport(retries=0), ledger, cost_ledger=self._cost_ledger,
+            )
             http_client = httpx.AsyncClient(
                 transport=transport, timeout=timeout, follow_redirects=False, trust_env=False,
             )
@@ -132,6 +203,8 @@ class AnthropicProvider:
             retry_delay_s=config.retry_delay_s, request_budget_path=config.request_budget_path,
             request_limit=config.request_limit,
             context_budget_tokens=config.context_budget_tokens,
+            expected_model=config.expected_model,
+            cost_budget_path=config.cost_budget_path,
         )
 
     def with_model(self, model: str) -> AnthropicProvider:
@@ -140,6 +213,8 @@ class AnthropicProvider:
             total_timeout_s=self._total_timeout_s, attempts=self._attempts,
             retry_delay_s=self._retry_delay_s, request_limit=self._request_limit,
             context_budget_tokens=self._context_budget_tokens,
+            expected_model=self._expected_model,
+            cost_budget_path=self._cost_ledger.path if self._cost_ledger is not None else None,
         )
 
     async def close(self) -> None:
@@ -152,14 +227,15 @@ class AnthropicProvider:
         bus: EventBus, run_id: str, *, step: int = 0, system: str | None = None,
     ) -> LlmResponse:
         try:
-            async with asyncio.timeout(self._total_timeout_s):
-                return await self._chat(messages, tool_schemas, bus, run_id, step, system)
+            async with asyncio.timeout(self._total_timeout_s) as deadline:
+                return await self._chat(messages, tool_schemas, bus, run_id, step, system, deadline)
         except TimeoutError as exc:
             raise LlmCallTimeoutError("llm_total_timeout") from exc
 
     async def _chat(
         self, messages: list[dict[str, object]], tool_schemas: list[dict[str, object]],
         bus: EventBus, run_id: str, step: int, system: str | None,
+        deadline: asyncio.Timeout,
     ) -> LlmResponse:
         await bus.publish(LlmModelSelectedEvent(
             run_id=run_id, model=self._model, ts=_now(),
@@ -176,6 +252,8 @@ class AnthropicProvider:
         if tools:
             kwargs["tools"] = tools
         for attempt in range(1, self._attempts + 1):
+            cost_attempt = CostAttempt(run_id, step, attempt, self._max_tokens)
+            cost_token = current_cost_attempt.set(cost_attempt)
             received_event = False
             text_parts: list[str] = []
             message_started = False
@@ -253,6 +331,17 @@ class AnthropicProvider:
                 response = self._response(final, "".join(text_parts))
                 usage = response.usage
                 assert usage is not None
+                if self._cost_ledger is not None:
+                    if cost_attempt.reservation is None:
+                        raise CostBudgetError("Model response has no linked cost reservation")
+                    # Validation above includes the service model and complete stream.
+                    # Errors/cancellation before here retain the pessimistic reserve.
+                    self._cost_ledger.settle(
+                        cost_attempt.reservation, model=response.model,
+                        input_tokens=usage.input_tokens, output_tokens=usage.output_tokens,
+                        cache_read_input_tokens=usage.cache_read_input_tokens,
+                        cache_creation_input_tokens=usage.cache_creation_input_tokens,
+                    )
                 await bus.publish(LlmUsageEvent(
                     run_id=run_id, input_tokens=usage.input_tokens,
                     output_tokens=usage.output_tokens,
@@ -269,20 +358,47 @@ class AnthropicProvider:
                     if isinstance(cause, ModelRequestBudgetExceeded):
                         raise cause
                     cause = cause.__cause__
+                rate_limited = _rate_limited(exc)
+                if rate_limited and (
+                    received_event or attempt >= self._attempts
+                    or (isinstance(exc, anthropic.APIStatusError) and exc.status_code == 200)
+                ):
+                    raise LlmRateLimitError(
+                        "llm_rate_limited", partial_text="".join(text_parts),
+                    ) from exc
                 if received_event and _retryable(exc):
                     raise LlmStreamInterruptedError(
                         "llm_stream_interrupted", partial_text="".join(text_parts),
                     ) from exc
                 if received_event or not _retryable(exc) or attempt >= self._attempts:
                     raise
+                delay = (
+                    _retry_after_s(exc.response, self._retry_delay_s)
+                    if rate_limited and isinstance(exc, anthropic.APIStatusError)
+                    else self._retry_delay_s
+                )
+                expires = deadline.when()
+                if rate_limited and expires is not None:
+                    if delay >= expires - asyncio.get_running_loop().time():
+                        raise LlmRateLimitError("llm_rate_limited") from exc
                 log.warning(
                     "Model transport failed before first event; attempt %d/%d",
                     attempt, self._attempts,
                 )
-                await asyncio.sleep(self._retry_delay_s)
+                try:
+                    await asyncio.sleep(delay)
+                except asyncio.CancelledError as cancelled:
+                    if rate_limited and deadline.expired():
+                        raise LlmRateLimitError("llm_rate_limited") from cancelled
+                    raise
+            finally:
+                current_cost_attempt.reset(cost_token)
         raise AssertionError("unreachable attempt loop")
 
     def _response(self, final: Any, text: str) -> LlmResponse:
+        model = getattr(final, "model", None)
+        if self._expected_model and model != self._expected_model:
+            raise LlmModelMismatchError(expected_model=self._expected_model, actual_model=model)
         tool_calls: list[ToolCallBlock] = []
         thinking: list[dict[str, object]] = []
         final_text: list[str] = []
@@ -319,9 +435,12 @@ class AnthropicProvider:
         usage = final.usage
         values = [
             getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None),
-            getattr(usage, "cache_read_input_tokens", 0) or 0,
-            getattr(usage, "cache_creation_input_tokens", 0) or 0,
+            getattr(usage, "cache_read_input_tokens", 0),
+            getattr(usage, "cache_creation_input_tokens", 0),
         ]
+        # Optional cache counters may be null, but false is malformed usage,
+        # not evidence that zero cache tokens were consumed.
+        values[2:] = [0 if value is None else value for value in values[2:]]
         if any(type(value) is not int or value < 0 for value in values):
             raise LlmProtocolError("invalid usage counters")
         counts = cast(list[int], values)
@@ -331,4 +450,5 @@ class AnthropicProvider:
         return LlmResponse(
             stop_reason=reason, text=text, tool_calls=tool_calls, thinking_blocks=thinking,
             usage=UsageStats(input_tokens, output_tokens, cache_read, cache_create, context_pct),
+            model=model if isinstance(model, str) else None,
         )

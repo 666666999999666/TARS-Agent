@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "experimental_source_revision": "a7b0f68a7aefd33b47eb93701bbdbd51a0a70378",
+  "published_runtime_matches_experimental_source": false,
+  "scope": "src/tars_agent tracked files at the experimental revision",
+  "file_count": 158,
+  "unchanged_file_count": 156,
+  "algorithm": "SHA-256 of sorted path + NUL + SHA-256(content with LF line endings) + newline, UTF-8 encoded",
+  "experimental_runtime_sha256": "6d4d4ea754eee7ef45a22c4de0209113c3205f15adc363ac6264f7f6b6b6843c",
+  "published_runtime_sha256": "9ecd20ea2181389e5f5e3575e7363f533b422e190334dcd442f05eca4f453b96",
+  "changed_runtime_files": [
+    {
+      "path": "src/tars_agent/core/eval/appworld.py",
+      "experimental_sha256": "2e3cf7b8ca79c79a6f074bd9bca98cc442cee06a10225d5ac81f99a0e1e7959a",
+      "published_sha256": "518db67d08c636ab7b2b3cffaab5a676ea2a83ffa118d59de42dd119297e73b4",
+      "reason": "Preserve the active POSIX virtual-environment Python launcher path; retain the existing resolved base-interpreter handling on Windows."
+    },
+    {
+      "path": "src/tars_agent/core/mcp/client.py",
+      "experimental_sha256": "2d20d5f04cc6c5aca877c6c49b311717960c8469e843021b40ae464acda96537",
+      "published_sha256": "333f7fff1cd281bd2c3d431ba05a3a1262b262595dc47b6c5e0e303c6e6237c3",
+      "reason": "Preserve trusted MCP Python launcher symlink semantics; retain existing resolved-target safety checks."
+    }
+  ],
+  "dependency_changes": {
+    "runtime": {
+      "PyJWT": {
+        "experimental": "2.14.0",
+        "published": "2.15.1"
+      }
+    },
+    "qa_security": {
+      "urllib3": {
+        "experimental": "2.7.0",
+        "published": "2.8.0"
+      }
+    }
+  },
+  "exclusions": [
+    "Publication documentation",
+    "Public summary verifier",
+    "CI, subprocess-test-helper and secret-scanner changes"
+  ],
+  "meaning": "Historical model scores, including the Windows AppWorld runs, remain attributed to the experimental revision. The publication adds the declared MCP and AppWorld startup-environment fixes and dependency updates; it does not claim a new model evaluation."
+}

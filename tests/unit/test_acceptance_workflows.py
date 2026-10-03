@@ -95,6 +95,7 @@ def test_daemon_uses_isolated_state_but_preserves_original_request_ledger(
     import tars_agent.core.llm.provider as provider_module
     from tars_agent.core.config import TarsConfig
     from tars_agent.core.paths import tars_home
+    from tars_agent.core.tools.runtime import FakeRuntime, RuntimeRouter
 
     user_home = tmp_path / "user"
     original_home = user_home / ".tars-baseline"
@@ -116,21 +117,28 @@ def test_daemon_uses_isolated_state_but_preserves_original_request_ledger(
     state_home = tmp_path / "isolated-state"
     controller = workflows.Workflows(False, state_home=state_home, output_root=tmp_path / "evidence")
 
-    class StopBeforeDocker(RuntimeError):
+    class StopBeforeListener(RuntimeError):
         pass
 
-    async def stop_before_docker(_sandbox: object) -> None:
+    async def check_recovery_home(*_args: object, **_kwargs: object) -> None:
         snapshot = app_module.get_config()
         assert tars_home() == state_home
         assert snapshot.llm.request_budget_path == ledger_path
         assert snapshot.llm.default_model == "unchanged-model"
         assert snapshot.logging.file == str(state_home / "logs" / "core.log")
         assert snapshot.trace.file == str(state_home / "traces" / "daemon.jsonl")
-        raise StopBeforeDocker()
 
-    # Run the real Core bootstrap and SQLite migration, then stop before Docker or a model call.
-    monkeypatch.setattr(app_module, "initialize_runtime_router", stop_before_docker)
-    with pytest.raises(StopBeforeDocker):
+    async def offline_runtime(*_args: object, **_kwargs: object) -> RuntimeRouter:
+        return RuntimeRouter(FakeRuntime(available=False), allow_host_fallback=False)
+
+    async def stop_before_listener(_runtime: object) -> int:
+        raise StopBeforeListener()
+
+    # Substitute Docker explicitly, keep real SQLite bootstrap, and stop before IPC/model work.
+    monkeypatch.setattr(app_module, "recover_core_sandboxes", check_recovery_home)
+    monkeypatch.setattr(app_module, "initialize_runtime_router", offline_runtime)
+    monkeypatch.setattr(app_module.RuntimeService, "recover_interrupted", stop_before_listener)
+    with pytest.raises(StopBeforeListener):
         workflows.daemon_child(state_home=controller.home)
 
     assert controller.home == state_home

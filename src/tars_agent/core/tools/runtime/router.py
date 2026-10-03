@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from tars_agent.core.tools.runtime.host import HostRuntime
 from tars_agent.core.tools.runtime.models import (
+    CleanupConfirmation,
     RuntimeStatus,
     ToolExecutionRequest,
     ToolExecutionResult,
@@ -129,6 +130,15 @@ class RuntimeRouter:
         if not callable(pending):
             return ()
         return tuple(run_id for run_id in pending() if isinstance(run_id, str))
+
+    async def confirm_cleanup(self) -> CleanupConfirmation:
+        confirm = getattr(self._sandbox, "confirm_cleanup", None)
+        if not callable(confirm):
+            return CleanupConfirmation(None, "unavailable", reason="runtime_has_no_cleanup_query")
+        result = await confirm()
+        if not isinstance(result, CleanupConfirmation):
+            return CleanupConfirmation(None, "unavailable", reason="invalid_cleanup_query_result")
+        return result
 
     @property
     def sandbox(self) -> ToolRuntime:

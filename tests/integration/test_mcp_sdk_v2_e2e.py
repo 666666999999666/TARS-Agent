@@ -16,6 +16,7 @@ from tars_agent.core.mcp.client import McpClient
 from tars_agent.core.mcp.tool import McpTool
 from tars_agent.core.tools.invocation import invoke_tool
 from tars_agent.core.tools.registry import ToolRegistry
+from tests.integration.python_process import python_module_command
 
 
 def _unused_loopback_port() -> int:
@@ -24,8 +25,13 @@ def _unused_loopback_port() -> int:
         return int(sock.getsockname()[1])
 
 
-async def _wait_for_port(port: int) -> None:
-    for _ in range(100):
+async def _wait_for_port(
+    port: int, *, timeout: float = 10, process: subprocess.Popen[bytes] | None = None,
+) -> None:
+    deadline = asyncio.get_running_loop().time() + timeout
+    while asyncio.get_running_loop().time() < deadline:
+        if process is not None and process.poll() is not None:
+            raise AssertionError(f"test server exited before ready (code={process.returncode})")
         try:
             reader, writer = await asyncio.open_connection("127.0.0.1", port)
         except OSError:
@@ -35,7 +41,7 @@ async def _wait_for_port(port: int) -> None:
         await writer.wait_closed()
         del reader
         return
-    raise AssertionError(f"MCP HTTP test server did not listen on port {port}")
+    raise AssertionError(f"test server did not listen on port {port} within {timeout:g} seconds")
 
 
 async def test_official_sdk_stdio_discovery_and_call() -> None:
@@ -189,14 +195,14 @@ async def test_core_mcp_status_reports_live_and_failed_stdio_servers(
     captured_path = runtime_home / "core-test-output.log"
     captured = captured_path.open("wb")
     process = subprocess.Popen(
-        [sys.executable, "-m", "tars_agent.core"],
+        python_module_command("tests.integration.offline_core"),
         env=env,
         stdout=captured,
         stderr=subprocess.STDOUT,
     )
     writer: asyncio.StreamWriter | None = None
     try:
-        await _wait_for_port(port)
+        await _wait_for_port(port, timeout=45, process=process)
         if process.poll() is not None:
             raise AssertionError(
                 "Core exited before mcp.status\n"

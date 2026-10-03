@@ -7,6 +7,7 @@ import pytest
 
 from tars_agent.core.config import LlmConfig, get_config
 from tars_agent.core.paths import tars_home
+from tars_agent.core.persistence.request_budget import RequestLedger
 
 
 @pytest.fixture(autouse=True)
@@ -136,6 +137,7 @@ def test_invalid_llm_max_tokens_rejected(
     '[trace]\nfile="capture.jsonl"', '[trace]\ninclude_llm_payload=true',
     '[permission]\ntimeout_s=0', '[sandbox]\nmode="preferred"',
     '[mcp]\nservers=[]', '[llm]\ntotal_timeout_s=999',
+    '[llm]\nexpected_model=""',
 ])
 def test_project_toml_cannot_change_sensitive_settings(tmp_path: Path, text: str) -> None:
     path = tmp_path / ".tars" / "config.toml"
@@ -287,3 +289,116 @@ def test_removed_config_options_are_rejected(text: str) -> None:
     (home / "config.toml").write_text(text, encoding="utf-8")
     with pytest.raises(SystemExit, match="Unknown"):
         get_config()
+
+
+def test_expected_model_defaults_to_disabled() -> None:
+    assert get_config().llm.expected_model == LlmConfig().expected_model == ""
+
+
+def test_expected_model_only_trusted_config_or_process_can_set_or_disable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    home = tars_home()
+    home.mkdir()
+    (home / "config.toml").write_text(
+        '[llm]\ndefault_model="deepseek-flash"\nexpected_model="deepseek-flash"\n',
+        encoding="utf-8",
+    )
+    (tmp_path / ".env").write_text('TARS_LLM_EXPECTED_MODEL=\n', encoding="utf-8")
+    assert get_config().llm.expected_model == "deepseek-flash"
+    monkeypatch.setenv("TARS_LLM_EXPECTED_MODEL", "")
+    assert get_config().llm.expected_model == ""
+    monkeypatch.setenv("TARS_LLM_EXPECTED_MODEL", "another")
+    monkeypatch.setenv("TARS_LLM_DEFAULT_MODEL", "another")
+    assert get_config().llm.expected_model == "another"
+
+
+@pytest.mark.parametrize("value", [" ", "deepseek-flash ", "deepseek\nflash"])
+def test_expected_model_rejects_whitespace(value: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TARS_LLM_EXPECTED_MODEL", value)
+    with pytest.raises(SystemExit, match="expected_model"):
+        get_config()
+
+
+def test_expected_model_rejects_different_requested_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TARS_LLM_EXPECTED_MODEL", "deepseek-flash")
+    monkeypatch.setenv("TARS_LLM_DEFAULT_MODEL", "paid-model")
+    with pytest.raises(SystemExit, match="must match"):
+        get_config()
+
+
+def test_expected_model_requires_string_in_trusted_toml() -> None:
+    home = tars_home()
+    home.mkdir()
+    (home / "config.toml").write_text('[llm]\nexpected_model=123\n', encoding="utf-8")
+    with pytest.raises(SystemExit, match="expected_model must be a string"):
+        get_config()
+
+
+def test_trusted_process_can_reuse_existing_ledger_across_isolated_homes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ledger_path = tmp_path / "original" / "request-budget.sqlite3"
+    RequestLedger(ledger_path).reserve()
+    before = ledger_path.read_bytes()
+    monkeypatch.setenv("TARS_LLM_REQUEST_BUDGET_PATH", str(ledger_path))
+    config = get_config()
+    assert config.llm.request_budget_path == ledger_path.resolve()
+    assert config.llm.request_limit == 100
+    monkeypatch.setenv("TARS_HOME", str(tmp_path / "separate-demo-home"))
+    assert get_config().llm.request_budget_path == config.llm.request_budget_path
+    assert ledger_path.read_bytes() == before
+    assert not (tmp_path / "separate-demo-home").exists()
+
+
+def test_project_dotenv_cannot_override_request_ledger(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    injected_path = tmp_path / "must-not-create.sqlite3"
+    (tmp_path / ".env").write_text(
+        f"TARS_LLM_REQUEST_BUDGET_PATH={injected_path}\n", encoding="utf-8",
+    )
+    default = tars_home() / "acceptance" / "request-budget.sqlite3"
+    assert get_config().llm.request_budget_path == default
+    assert not default.exists()
+    assert not injected_path.exists()
+    trusted = tmp_path / "trusted.sqlite3"
+    RequestLedger(trusted).reserve()
+    monkeypatch.setenv("TARS_LLM_REQUEST_BUDGET_PATH", str(trusted))
+    assert get_config().llm.request_budget_path == trusted.resolve()
+    assert not injected_path.exists()
+
+
+@pytest.mark.parametrize("kind", ["missing", "relative", "fake", "empty"])
+def test_invalid_process_request_ledger_fails_before_creating_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, kind: str,
+) -> None:
+    path = tmp_path / "private-ledger.sqlite3"
+    if kind == "relative":
+        RequestLedger(path).reserve()
+        value = path.name
+    elif kind == "fake":
+        path.write_bytes(b"not a ledger")
+        value = str(path)
+    elif kind == "empty":
+        path.touch()
+        value = str(path)
+    else:
+        value = str(tmp_path / "absent" / path.name)
+    before = {str(item): item.read_bytes() for item in tmp_path.rglob("*") if item.is_file()}
+    monkeypatch.setenv("TARS_LLM_REQUEST_BUDGET_PATH", value)
+    with pytest.raises(SystemExit, match="TARS_LLM_REQUEST_BUDGET_PATH") as captured:
+        get_config()
+    assert "private-ledger" not in str(captured.value)
+    assert {str(item): item.read_bytes() for item in tmp_path.rglob("*") if item.is_file()} == before
+    assert not (tmp_path / "absent").exists()
+
+
+@pytest.mark.parametrize("trusted", [False, True])
+def test_toml_cannot_select_request_budget_path(tmp_path: Path, trusted: bool) -> None:
+    config_path = tars_home() / "config.toml" if trusted else tmp_path / ".tars" / "config.toml"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text('[llm]\nrequest_budget_path="another.sqlite3"\n', encoding="utf-8")
+    with pytest.raises(SystemExit, match="Unknown.*request_budget_path"):
+        get_config()
+    assert not (config_path.parent / "another.sqlite3").exists()

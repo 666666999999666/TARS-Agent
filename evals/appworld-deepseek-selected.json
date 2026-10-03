@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "suite_id": "tars-deepseek-completion-contract-selected-dev-v1",
+  "name": "Selected completion protocol B on the complete AppWorld dev split",
+  "description": "Variant B selected after the completed paired dev observation and manual review of unexpected changes. This explicit single-variant profile preserves the source default A and does not claim stable or test_normal performance.",
+  "adapter": "appworld",
+  "execution_mode": "agent_tasks",
+  "model_config_ref": {"source": "runtime_config", "reference": "deepseek-flash-official-anthropic-v1", "model": "deepseek-flash"},
+  "default_repetitions": 1,
+  "sandbox_mode": "required",
+  "tasks": [],
+  "appworld": {
+    "data_root": "build/appworld/data-root", "dataset": "dev", "workers": 1,
+    "max_steps": 60, "task_timeout_s": 900, "infrastructure_retries": 1,
+    "paired_comparison": false, "prompt_variant": "B"
+  }
+}

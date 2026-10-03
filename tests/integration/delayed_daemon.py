@@ -7,6 +7,7 @@ from typing import Any, Self
 
 from tars_agent.core.app import CoreApp
 from tars_agent.core.llm.types import LlmResponse
+from tests.integration.offline_core import install_offline_runtime
 
 
 class DelayedProvider:
@@ -33,6 +34,7 @@ def main() -> None:
     import tars_agent.core.app as app_module
     import tars_agent.core.runner as runner_module
 
+    install_offline_runtime()
     app_module.AnthropicProvider = DelayedProvider  # type: ignore[attr-defined]
     runner_module.AnthropicProvider = DelayedProvider  # type: ignore[attr-defined]
     asyncio.run(CoreApp().run())

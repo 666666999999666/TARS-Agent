@@ -1,0 +1,3140 @@
+{
+  "schema_version": 1,
+  "experiment": {
+    "comparison": "completion-contract-v1",
+    "executed_date": "2026-09-30",
+    "execution_source_commit": "a7b0f68a7aefd33b47eb93701bbdbd51a0a70378",
+    "source_tree_sha256": "cecd82d5ac10f8beca22bd6a4a5cb0767a8bc3d4141656e1b9dee00db5fb33fb",
+    "appworld_source_commit": "42b5bcf3cd334fee33f0c37c02070a9f5807add5",
+    "appworld_data_version": "0.2.0",
+    "image_sha256": "45b13261765a059e5120bc914f254dae67372240a5e787bb751fd15dc00523bd",
+    "model": "deepseek-flash",
+    "protocol": "anthropic_messages",
+    "base_url": "https://api.deepseek.com/anthropic",
+    "thinking": "provider_default",
+    "model_fallback": false,
+    "workers": 1,
+    "max_steps": 60,
+    "task_timeout_seconds": 900,
+    "max_output_tokens": 8192,
+    "context_budget": 131072,
+    "max_http_attempts_per_step": 2,
+    "infrastructure_retries": 1,
+    "prompt_template_sha256": {
+      "A": "eb33913ffe8c2b13306787797b8230423327480a6be7eb9a848693db4f93d8f2",
+      "B": "22a985b4bce5de4ae64f82656c15f9d50443056e11bde0cb9702b45d667e408d"
+    }
+  },
+  "source_evidence_sha256": {
+    "delivery_summary": "dee20105202ac4298a5c5643ff22c6b2ad8c32b1728d2f4ef31fa03bf5e7c778",
+    "manual_review": "de957b21adb94066f7d01e38e78a0472fd2cce266ce81747fad0279611ab0a99"
+  },
+  "stages": {
+    "train": {
+      "selection": "four_preselected_scenarios",
+      "task_ids": [
+        "22cc237_1",
+        "22cc237_2",
+        "22cc237_3",
+        "27e1026_1",
+        "27e1026_2",
+        "27e1026_3",
+        "692c77d_1",
+        "692c77d_2",
+        "692c77d_3",
+        "76f2c72_1",
+        "76f2c72_2",
+        "76f2c72_3"
+      ],
+      "task_ids_sha256": "8555543c11fd04fcfd7ba030623166bc964544d39213d8ce8aab5e72858ea98c",
+      "data_sha256": "d9036997a2a827f02521f4dbcd7cb3c383a74302946e89069c44e18c612e6c93",
+      "records": [
+        {
+          "split": "train",
+          "task_id": "22cc237_1",
+          "scenario_id": "22cc237",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 57140,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 31415,
+            "output_tokens": 5037,
+            "cache_read_input_tokens": 248192,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b7423ee89f6a2d240dfc1916a3b56ffff47077afcdcbbaf5a24210441506e8b8"
+        },
+        {
+          "split": "train",
+          "task_id": "22cc237_1",
+          "scenario_id": "22cc237",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 45797,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 19944,
+            "output_tokens": 4449,
+            "cache_read_input_tokens": 177024,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "5e803a14d1090a8c67c7b63cdb450c9c0db5ea0ea9eb91cda0057f4423ed035c"
+        },
+        {
+          "split": "train",
+          "task_id": "22cc237_2",
+          "scenario_id": "22cc237",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 48829,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 19292,
+            "output_tokens": 5629,
+            "cache_read_input_tokens": 188032,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "07f14380802416d10739fb13d4a2d2ed5a8e930b7210bc104caba992b4a9818a"
+        },
+        {
+          "split": "train",
+          "task_id": "22cc237_2",
+          "scenario_id": "22cc237",
+          "variant": "B",
+          "official_pass": false,
+          "official_failed_checks": 3,
+          "runtime_status": "failed",
+          "runtime_reason": "context_budget_exceeded",
+          "latency_ms": 38032,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 31469,
+            "output_tokens": 3922,
+            "cache_read_input_tokens": 127232,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "a748f1ed6d5b9ef700fdd4dabb56fd05bdfff6dedf492ee9f528c0d156f6c567"
+        },
+        {
+          "split": "train",
+          "task_id": "22cc237_3",
+          "scenario_id": "22cc237",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 49265,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 23837,
+            "output_tokens": 6143,
+            "cache_read_input_tokens": 228992,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "64991559abab5b9f212e88f16d606462d5116dc1c2894e1c1d93c982c1042781"
+        },
+        {
+          "split": "train",
+          "task_id": "22cc237_3",
+          "scenario_id": "22cc237",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 44844,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 28925,
+            "output_tokens": 4285,
+            "cache_read_input_tokens": 243968,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "af551ed37583367d57cfef03f19d9fcaaf9ecd402abf6548e83e587133c07095"
+        },
+        {
+          "split": "train",
+          "task_id": "27e1026_1",
+          "scenario_id": "27e1026",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 32015,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 9583,
+            "output_tokens": 2384,
+            "cache_read_input_tokens": 89856,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "baed4b62eabe6f408c6cc1f95e44e0342ee32d25f0109a329839c04a21fb0cc4"
+        },
+        {
+          "split": "train",
+          "task_id": "27e1026_1",
+          "scenario_id": "27e1026",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 37047,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 11818,
+            "output_tokens": 3874,
+            "cache_read_input_tokens": 103296,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "fd8cce22e727078c4bf17624dc4f78a88721de5b64a85993b5e6c7026aa9dacd"
+        },
+        {
+          "split": "train",
+          "task_id": "27e1026_2",
+          "scenario_id": "27e1026",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 64702,
+          "http_attempts": 22,
+          "confirmed_usage": {
+            "input_tokens": 18576,
+            "output_tokens": 7851,
+            "cache_read_input_tokens": 271104,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "64cd475822854b97e3303f32487004ba5f8454fc76c1058c63aa023c7fd291e4"
+        },
+        {
+          "split": "train",
+          "task_id": "27e1026_2",
+          "scenario_id": "27e1026",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 40608,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 13835,
+            "output_tokens": 3654,
+            "cache_read_input_tokens": 120832,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "834731c3438a09945fb2e125593eb64b3a7ff3caf16d11c8ac7e6f0611d3c930"
+        },
+        {
+          "split": "train",
+          "task_id": "27e1026_3",
+          "scenario_id": "27e1026",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 56000,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 22123,
+            "output_tokens": 6741,
+            "cache_read_input_tokens": 200576,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "3c2aec459ea89462a65fb29234019629cc8617a05c73caf08eebc8f27e5e3b78"
+        },
+        {
+          "split": "train",
+          "task_id": "27e1026_3",
+          "scenario_id": "27e1026",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 34812,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 11785,
+            "output_tokens": 3286,
+            "cache_read_input_tokens": 97920,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "17e2cf187ade7684a33f753878a025121c1f62925b78c27ab2052ae92b6109b4"
+        },
+        {
+          "split": "train",
+          "task_id": "692c77d_1",
+          "scenario_id": "692c77d",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 33328,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 9605,
+            "output_tokens": 2997,
+            "cache_read_input_tokens": 102912,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "06f71cfa7c503a22cf11e080be137291a4a689522560f600f82659037c5445d5"
+        },
+        {
+          "split": "train",
+          "task_id": "692c77d_1",
+          "scenario_id": "692c77d",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 36922,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 10812,
+            "output_tokens": 3261,
+            "cache_read_input_tokens": 113408,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "dc4349a702b80445907bf6785aa93d20aa0fa3b39a8eb4b9d58b02da25f9e0c7"
+        },
+        {
+          "split": "train",
+          "task_id": "692c77d_2",
+          "scenario_id": "692c77d",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 34172,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 8399,
+            "output_tokens": 3002,
+            "cache_read_input_tokens": 91648,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "16d47232b7e0a91216c0ab77902a7bb1938a7cc7016b63c92993b3d35aa10c02"
+        },
+        {
+          "split": "train",
+          "task_id": "692c77d_2",
+          "scenario_id": "692c77d",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 34031,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 9535,
+            "output_tokens": 3538,
+            "cache_read_input_tokens": 94592,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "d2dccf48f11b253aebd77dcd0b07bdefe1fb1162b75c04dee02c6953246ede3d"
+        },
+        {
+          "split": "train",
+          "task_id": "692c77d_3",
+          "scenario_id": "692c77d",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 34765,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 9866,
+            "output_tokens": 3538,
+            "cache_read_input_tokens": 100864,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "c0ee587bbbd2df127257c828b60a0b4c6486c4bb18659ec785fa3240fa5ea2fb"
+        },
+        {
+          "split": "train",
+          "task_id": "692c77d_3",
+          "scenario_id": "692c77d",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 33500,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 9759,
+            "output_tokens": 3347,
+            "cache_read_input_tokens": 94720,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "c98b92fb9db659973f7660f4c6a6b59973c6d8b486e95e488c157f76c394a048"
+        },
+        {
+          "split": "train",
+          "task_id": "76f2c72_1",
+          "scenario_id": "76f2c72",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "failed",
+          "runtime_reason": "context_budget_exceeded",
+          "latency_ms": 36312,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 11966,
+            "output_tokens": 4097,
+            "cache_read_input_tokens": 59904,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "8feb6dfd7136ebfad2c6d3d4e10133a4b396833bbbba309f86dfec3323306569"
+        },
+        {
+          "split": "train",
+          "task_id": "76f2c72_1",
+          "scenario_id": "76f2c72",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 63608,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 7846,
+            "output_tokens": 10232,
+            "cache_read_input_tokens": 91904,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "dda57c83a81185486a785eaf9dd5448889719a2267705c9f30f940313eaee1f5"
+        },
+        {
+          "split": "train",
+          "task_id": "76f2c72_2",
+          "scenario_id": "76f2c72",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 2,
+          "runtime_status": "failed",
+          "runtime_reason": "context_budget_exceeded",
+          "latency_ms": 95265,
+          "http_attempts": 18,
+          "confirmed_usage": {
+            "input_tokens": 17435,
+            "output_tokens": 15761,
+            "cache_read_input_tokens": 177920,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "8d9dd8933e69e968b9ce5b722a52af1bcbc5a28be2ee35f9f0f5d881c9ab9645"
+        },
+        {
+          "split": "train",
+          "task_id": "76f2c72_2",
+          "scenario_id": "76f2c72",
+          "variant": "B",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "failed",
+          "runtime_reason": "context_budget_exceeded",
+          "latency_ms": 79358,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 22281,
+            "output_tokens": 11607,
+            "cache_read_input_tokens": 180608,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "e4c4e0cb895e539c7442d589c52fcda9e1a32dd20904e39784e7eb30ebb407fa"
+        },
+        {
+          "split": "train",
+          "task_id": "76f2c72_3",
+          "scenario_id": "76f2c72",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 21452,
+          "http_attempts": 9,
+          "confirmed_usage": {
+            "input_tokens": 5206,
+            "output_tokens": 1454,
+            "cache_read_input_tokens": 25728,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "3ee56f4892b8a5927eceb85f2913d6f6dd7b096d433eea1c287dd95772c63902"
+        },
+        {
+          "split": "train",
+          "task_id": "76f2c72_3",
+          "scenario_id": "76f2c72",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 22640,
+          "http_attempts": 10,
+          "confirmed_usage": {
+            "input_tokens": 5792,
+            "output_tokens": 1425,
+            "cache_read_input_tokens": 31872,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "29214c4d8420b6b6b90191ba66aebf83e2c128a254be32841fdb534229e247f4"
+        }
+      ],
+      "aggregate": {
+        "variants": {
+          "A": {
+            "task_count": 12,
+            "passed_tasks": 3,
+            "scenario_count": 4,
+            "passed_scenarios": 1,
+            "tgc_percent": 25.0,
+            "sgc_percent": 25.0,
+            "runtime_status_counts": {
+              "failed": 2,
+              "succeeded": 10
+            },
+            "runtime_reason_counts": {
+              "completed": 10,
+              "context_budget_exceeded": 2
+            },
+            "official_failed_checks": 10,
+            "median_latency_seconds": 42.5705,
+            "http_attempts": 195,
+            "confirmed_usage": {
+              "input_tokens": 187303,
+              "output_tokens": 64634,
+              "cache_read_input_tokens": 1785728,
+              "cache_creation_input_tokens": 0
+            },
+            "estimated_confirmed_nano_cny": 963107120
+          },
+          "B": {
+            "task_count": 12,
+            "passed_tasks": 10,
+            "scenario_count": 4,
+            "passed_scenarios": 2,
+            "tgc_percent": 83.3,
+            "sgc_percent": 50.0,
+            "runtime_status_counts": {
+              "failed": 2,
+              "succeeded": 10
+            },
+            "runtime_reason_counts": {
+              "completed": 10,
+              "context_budget_exceeded": 2
+            },
+            "official_failed_checks": 4,
+            "median_latency_seconds": 37.5395,
+            "http_attempts": 184,
+            "confirmed_usage": {
+              "input_tokens": 183801,
+              "output_tokens": 56880,
+              "cache_read_input_tokens": 1477376,
+              "cache_creation_input_tokens": 0
+            },
+            "estimated_confirmed_nano_cny": 881737040
+          }
+        },
+        "paired_outcomes": {
+          "A_win": 0,
+          "B_win": 7,
+          "both_pass": 3,
+          "both_fail": 2
+        }
+      },
+      "raw_automatic_collateral_failed_checks": {
+        "A": 1,
+        "B": null
+      },
+      "source_evidence_sha256": {
+        "result": "22e649224745d0d263f14fdd447ba6f6695d912065c9f7e2c7c3b474836e41c4",
+        "checkpoint": "385aff6a989e16ad6e97d09d22865ab7a2583719373f63f0dd9ec15211b428bc",
+        "freeze": "daae5f007df0de37d66387f49244cb9dd3f4aaeb4a7b20b9ae361db97445186e",
+        "official_A": "a21060e370572a746e4082e0057545d192e3fddaedba19272c1186506ecac784",
+        "official_B": "e1ba7e30b709028267a484ce21c7fc65d9f7ecd56d0d367f32b63586a3809498"
+      }
+    },
+    "dev": {
+      "selection": "complete_official_dev",
+      "task_ids": [
+        "0d8a4ee_1",
+        "0d8a4ee_2",
+        "0d8a4ee_3",
+        "23cf851_1",
+        "23cf851_2",
+        "23cf851_3",
+        "37a8675_1",
+        "37a8675_2",
+        "37a8675_3",
+        "383cbac_1",
+        "383cbac_2",
+        "383cbac_3",
+        "396c5a2_1",
+        "396c5a2_2",
+        "396c5a2_3",
+        "3ab5b8b_1",
+        "3ab5b8b_2",
+        "3ab5b8b_3",
+        "4ec8de5_1",
+        "4ec8de5_2",
+        "4ec8de5_3",
+        "4fab96f_1",
+        "4fab96f_2",
+        "4fab96f_3",
+        "50e1ac9_1",
+        "50e1ac9_2",
+        "50e1ac9_3",
+        "530b157_1",
+        "530b157_2",
+        "530b157_3",
+        "57c3486_1",
+        "57c3486_2",
+        "57c3486_3",
+        "6171bbc_1",
+        "6171bbc_2",
+        "6171bbc_3",
+        "68ee2c9_1",
+        "68ee2c9_2",
+        "68ee2c9_3",
+        "6bdbc26_1",
+        "6bdbc26_2",
+        "6bdbc26_3",
+        "6c2c621_1",
+        "6c2c621_2",
+        "6c2c621_3",
+        "b119b1f_1",
+        "b119b1f_2",
+        "b119b1f_3",
+        "d4e9306_1",
+        "d4e9306_2",
+        "d4e9306_3",
+        "df61dc5_1",
+        "df61dc5_2",
+        "df61dc5_3",
+        "fac291d_1",
+        "fac291d_2",
+        "fac291d_3"
+      ],
+      "task_ids_sha256": "437316631ca576c8037979177e583d2c32fe885b6a4b2dd1f6b684fc3269dd1e",
+      "data_sha256": "d9036997a2a827f02521f4dbcd7cb3c383a74302946e89069c44e18c612e6c93",
+      "records": [
+        {
+          "split": "dev",
+          "task_id": "0d8a4ee_1",
+          "scenario_id": "0d8a4ee",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 49657,
+          "http_attempts": 19,
+          "confirmed_usage": {
+            "input_tokens": 17743,
+            "output_tokens": 4282,
+            "cache_read_input_tokens": 147328,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "3c08355b624d69acde33cd50013666fba0c3af6cb4fa0ef31ea1985ea60d3506"
+        },
+        {
+          "split": "dev",
+          "task_id": "0d8a4ee_1",
+          "scenario_id": "0d8a4ee",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 36233,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 11046,
+            "output_tokens": 3158,
+            "cache_read_input_tokens": 103296,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "31a751b3b52ce1215e53eac1b8758e466fb598b9614c7eba0fb7a0c3480e664d"
+        },
+        {
+          "split": "dev",
+          "task_id": "0d8a4ee_2",
+          "scenario_id": "0d8a4ee",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 30016,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 10058,
+            "output_tokens": 3029,
+            "cache_read_input_tokens": 78720,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "f4a794d663d21652c5c06e84a563a7d4f6ab14c8b2e5e4a93a74263b487ea642"
+        },
+        {
+          "split": "dev",
+          "task_id": "0d8a4ee_2",
+          "scenario_id": "0d8a4ee",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 29202,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 9460,
+            "output_tokens": 2602,
+            "cache_read_input_tokens": 90112,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "15db5b1345b2b2c999fb1f163584b76c89dbd952785dda156b9ae06c1c8c723c"
+        },
+        {
+          "split": "dev",
+          "task_id": "0d8a4ee_3",
+          "scenario_id": "0d8a4ee",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 32015,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 16486,
+            "output_tokens": 3310,
+            "cache_read_input_tokens": 129536,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "491ccdb85baaa8d48c2473403a9910f4d7be4dc3ef7d0a51458b185e016f835e"
+        },
+        {
+          "split": "dev",
+          "task_id": "0d8a4ee_3",
+          "scenario_id": "0d8a4ee",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 37922,
+          "http_attempts": 18,
+          "confirmed_usage": {
+            "input_tokens": 12323,
+            "output_tokens": 3920,
+            "cache_read_input_tokens": 119168,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "e78a344250c6cc8c2d16cb60cbe2d1211ec77abc7f4e848b68a638bdcea205d2"
+        },
+        {
+          "split": "dev",
+          "task_id": "23cf851_1",
+          "scenario_id": "23cf851",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 19405,
+          "http_attempts": 9,
+          "confirmed_usage": {
+            "input_tokens": 6943,
+            "output_tokens": 1005,
+            "cache_read_input_tokens": 30464,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "6845fc16627e2dffdeaad15b45e2472c1c99015a71000b8b22fb3cab4787f1f6"
+        },
+        {
+          "split": "dev",
+          "task_id": "23cf851_1",
+          "scenario_id": "23cf851",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 18984,
+          "http_attempts": 9,
+          "confirmed_usage": {
+            "input_tokens": 6715,
+            "output_tokens": 1035,
+            "cache_read_input_tokens": 29568,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "d2715c72fd4ea9785d3427bdacb8752c04fe19690e6484a798273bc1948399db"
+        },
+        {
+          "split": "dev",
+          "task_id": "23cf851_2",
+          "scenario_id": "23cf851",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 26437,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 12507,
+            "output_tokens": 1942,
+            "cache_read_input_tokens": 78208,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "8e5fff389e1e24ff9199a012f7a55daf7ce3da6ea67a0418410fbb013869944b"
+        },
+        {
+          "split": "dev",
+          "task_id": "23cf851_2",
+          "scenario_id": "23cf851",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 25547,
+          "http_attempts": 11,
+          "confirmed_usage": {
+            "input_tokens": 8820,
+            "output_tokens": 2165,
+            "cache_read_input_tokens": 56960,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "c7b1941397b4c52d01c767401e925bd1706b74d49c5bcad848170c5fb95adafa"
+        },
+        {
+          "split": "dev",
+          "task_id": "23cf851_3",
+          "scenario_id": "23cf851",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 20890,
+          "http_attempts": 9,
+          "confirmed_usage": {
+            "input_tokens": 5650,
+            "output_tokens": 1531,
+            "cache_read_input_tokens": 30464,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "c4042c42c2e6180ac2c7bac151e56ac196a4a2d8d97c2d3fe7ffe6ebf2baedd1"
+        },
+        {
+          "split": "dev",
+          "task_id": "23cf851_3",
+          "scenario_id": "23cf851",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 25906,
+          "http_attempts": 11,
+          "confirmed_usage": {
+            "input_tokens": 6362,
+            "output_tokens": 2039,
+            "cache_read_input_tokens": 46208,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "0b5cd05456e166c8d0b0c7ebc485446d81fa459d89884cf81fae5be8cc5cfff1"
+        },
+        {
+          "split": "dev",
+          "task_id": "37a8675_1",
+          "scenario_id": "37a8675",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 2,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 31657,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 9798,
+            "output_tokens": 2864,
+            "cache_read_input_tokens": 117248,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "4be624c3ac02f1064e03d6065cc2bfad025178d6140696d74eb11279ad3db5e7"
+        },
+        {
+          "split": "dev",
+          "task_id": "37a8675_1",
+          "scenario_id": "37a8675",
+          "variant": "B",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 32827,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 9227,
+            "output_tokens": 3062,
+            "cache_read_input_tokens": 105216,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "08c1f88abeb7cb4893f2dfbedefeb2d6610eb9ca3ea486a9816e020fc93d8498"
+        },
+        {
+          "split": "dev",
+          "task_id": "37a8675_2",
+          "scenario_id": "37a8675",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 2,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 41202,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 14089,
+            "output_tokens": 3903,
+            "cache_read_input_tokens": 184704,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "dc042631f003138c505b2557198ba42ab6c509b8a4bd1e7a07f9046401e1cd69"
+        },
+        {
+          "split": "dev",
+          "task_id": "37a8675_2",
+          "scenario_id": "37a8675",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 36797,
+          "http_attempts": 21,
+          "confirmed_usage": {
+            "input_tokens": 12376,
+            "output_tokens": 2950,
+            "cache_read_input_tokens": 162432,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "94a2a42fc2fd1d21f6a62d9474783e70c0c9bae56c1516d038fef63762e4479a"
+        },
+        {
+          "split": "dev",
+          "task_id": "37a8675_3",
+          "scenario_id": "37a8675",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 52266,
+          "http_attempts": 23,
+          "confirmed_usage": {
+            "input_tokens": 17350,
+            "output_tokens": 5922,
+            "cache_read_input_tokens": 238720,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "7ff2a38cb85ef301b455b04660b9ab5949dbd518a606a5e444f5516d88836ffc"
+        },
+        {
+          "split": "dev",
+          "task_id": "37a8675_3",
+          "scenario_id": "37a8675",
+          "variant": "B",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 37375,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 12267,
+            "output_tokens": 3278,
+            "cache_read_input_tokens": 167040,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "1b8b6e7ec2753611c297382a7528bdcfbf54c0afa46163d82f69d3e2f5b19507"
+        },
+        {
+          "split": "dev",
+          "task_id": "383cbac_1",
+          "scenario_id": "383cbac",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 26546,
+          "http_attempts": 10,
+          "confirmed_usage": {
+            "input_tokens": 8428,
+            "output_tokens": 2446,
+            "cache_read_input_tokens": 55552,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "fc06497617c18c1ba9d91c9cda53142a611f2ef8bf7d4064b18e7ba1232b2f89"
+        },
+        {
+          "split": "dev",
+          "task_id": "383cbac_1",
+          "scenario_id": "383cbac",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 31468,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 11972,
+            "output_tokens": 3472,
+            "cache_read_input_tokens": 70912,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "f21b540d73525e959773c44b93846096290d467c5d0d76cdc71c01be7580f7f4"
+        },
+        {
+          "split": "dev",
+          "task_id": "383cbac_2",
+          "scenario_id": "383cbac",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 54312,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 10318,
+            "output_tokens": 6984,
+            "cache_read_input_tokens": 84864,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "798b87bdab2f327958b5d4a4e4f1613ab7504a9bae2d1c9a231938e39387ee52"
+        },
+        {
+          "split": "dev",
+          "task_id": "383cbac_2",
+          "scenario_id": "383cbac",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 58984,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 15072,
+            "output_tokens": 6637,
+            "cache_read_input_tokens": 102784,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "5294b4632b6bae79a898b3f328a2eae87915a4bab650327685595b2c3d0b4cb5"
+        },
+        {
+          "split": "dev",
+          "task_id": "383cbac_3",
+          "scenario_id": "383cbac",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 46733,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 17721,
+            "output_tokens": 5655,
+            "cache_read_input_tokens": 123648,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b2409ff44134d39d90f2337454ded3b42113f36a966a5f1e83ad17d024f885a4"
+        },
+        {
+          "split": "dev",
+          "task_id": "383cbac_3",
+          "scenario_id": "383cbac",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 48483,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 17180,
+            "output_tokens": 5809,
+            "cache_read_input_tokens": 114816,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "6284dadc7c7ee3934dee3b71377b4c324e5408ebd2b0fe2a95f12e82e833b899"
+        },
+        {
+          "split": "dev",
+          "task_id": "396c5a2_1",
+          "scenario_id": "396c5a2",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 29250,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 9956,
+            "output_tokens": 2324,
+            "cache_read_input_tokens": 83840,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "dbed3036b1c52f5b699e7b488fad8717289066ce295b2af8401f2808f74d466a"
+        },
+        {
+          "split": "dev",
+          "task_id": "396c5a2_1",
+          "scenario_id": "396c5a2",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 29686,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 16239,
+            "output_tokens": 2534,
+            "cache_read_input_tokens": 125696,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "0134d18d88cd824158f89732cdc5d7897e7698a5f704c257999a3df603755800"
+        },
+        {
+          "split": "dev",
+          "task_id": "396c5a2_2",
+          "scenario_id": "396c5a2",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 29780,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 14578,
+            "output_tokens": 2463,
+            "cache_read_input_tokens": 125696,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "770512fe39f50ad4efca0327ebf29a470a93a792927d61f75ffb81f25523bf9b"
+        },
+        {
+          "split": "dev",
+          "task_id": "396c5a2_2",
+          "scenario_id": "396c5a2",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 35234,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 12276,
+            "output_tokens": 3521,
+            "cache_read_input_tokens": 119680,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "8bef538c77078f74b293ffc96690578acf277ca48b3da8ffa839477012aafa6e"
+        },
+        {
+          "split": "dev",
+          "task_id": "396c5a2_3",
+          "scenario_id": "396c5a2",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 27484,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 11760,
+            "output_tokens": 2227,
+            "cache_read_input_tokens": 99456,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b78249ff4c46d8d173e1c357c54dbb47380ca0c080c6bf1bc690fa91f1b07ff5"
+        },
+        {
+          "split": "dev",
+          "task_id": "396c5a2_3",
+          "scenario_id": "396c5a2",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 25702,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 9183,
+            "output_tokens": 2052,
+            "cache_read_input_tokens": 72704,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "aad64aae51fdca17dd0c3d96fbb28087dca63799a622feb29f918389a1c758eb"
+        },
+        {
+          "split": "dev",
+          "task_id": "3ab5b8b_1",
+          "scenario_id": "3ab5b8b",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 4,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 30062,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 8544,
+            "output_tokens": 2678,
+            "cache_read_input_tokens": 82432,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "06bd9421f5cc48c472b922b4feb144c42d57d300d142a79f5fa172596bd92c63"
+        },
+        {
+          "split": "dev",
+          "task_id": "3ab5b8b_1",
+          "scenario_id": "3ab5b8b",
+          "variant": "B",
+          "official_pass": false,
+          "official_failed_checks": 5,
+          "runtime_status": "failed",
+          "runtime_reason": "max_tokens",
+          "latency_ms": 61172,
+          "http_attempts": 11,
+          "confirmed_usage": {
+            "input_tokens": 10385,
+            "output_tokens": 11485,
+            "cache_read_input_tokens": 77952,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b2fd0e337713f69ae972d57c4234ece295dbc9af95c387a6e615ee53263f23ac"
+        },
+        {
+          "split": "dev",
+          "task_id": "3ab5b8b_2",
+          "scenario_id": "3ab5b8b",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 35655,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 8853,
+            "output_tokens": 3810,
+            "cache_read_input_tokens": 120320,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "400520ab84be1fe0ca596a1f9b6833aff8024d02c3fd6e655955bee215433528"
+        },
+        {
+          "split": "dev",
+          "task_id": "3ab5b8b_2",
+          "scenario_id": "3ab5b8b",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 34141,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 10260,
+            "output_tokens": 3168,
+            "cache_read_input_tokens": 122624,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "99f0ed8d118e69ce05723d9fbea0bfa57201bfb204533aefb69c127b01184775"
+        },
+        {
+          "split": "dev",
+          "task_id": "3ab5b8b_3",
+          "scenario_id": "3ab5b8b",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 45234,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 11346,
+            "output_tokens": 6046,
+            "cache_read_input_tokens": 133632,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "0ce310ec8d70ab3a810dfdfbcac3e583fa28964fbc7c6fe03533c5220bd8977f"
+        },
+        {
+          "split": "dev",
+          "task_id": "3ab5b8b_3",
+          "scenario_id": "3ab5b8b",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 55875,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 15311,
+            "output_tokens": 8673,
+            "cache_read_input_tokens": 202368,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b1dfe42aa334d32ddd2cd63e7a72c518adf4d34b023df929f95219db6b1df692"
+        },
+        {
+          "split": "dev",
+          "task_id": "4ec8de5_1",
+          "scenario_id": "4ec8de5",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 35030,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 10644,
+            "output_tokens": 3292,
+            "cache_read_input_tokens": 100608,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "700bee702ffea6438fc8a27a5801ba3ea4e815be2f7f0b4fe71e24a0549e1ccb"
+        },
+        {
+          "split": "dev",
+          "task_id": "4ec8de5_1",
+          "scenario_id": "4ec8de5",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 61640,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 12687,
+            "output_tokens": 8917,
+            "cache_read_input_tokens": 129792,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "2cb6ee8384e7382e0a91c4123c590ef845f366a361e185f52c49f0d20e41a387"
+        },
+        {
+          "split": "dev",
+          "task_id": "4ec8de5_2",
+          "scenario_id": "4ec8de5",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 56313,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 11258,
+            "output_tokens": 8950,
+            "cache_read_input_tokens": 151040,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "82aef6dde796f6bd618801961d7dad2e8c4a040bd4bc1f55c968fdba44074d9f"
+        },
+        {
+          "split": "dev",
+          "task_id": "4ec8de5_2",
+          "scenario_id": "4ec8de5",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 32546,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 10776,
+            "output_tokens": 3348,
+            "cache_read_input_tokens": 86144,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "d572e4534be2b47c5cc25825f485e7b86432ee7e2f5f733ee5a125b2bbfc7823"
+        },
+        {
+          "split": "dev",
+          "task_id": "4ec8de5_3",
+          "scenario_id": "4ec8de5",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 81593,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 11233,
+            "output_tokens": 14393,
+            "cache_read_input_tokens": 153088,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "596486e660edb62187cc9336c17b13fd4d9efbdeec89b7db4254e2d09f063889"
+        },
+        {
+          "split": "dev",
+          "task_id": "4ec8de5_3",
+          "scenario_id": "4ec8de5",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 88467,
+          "http_attempts": 19,
+          "confirmed_usage": {
+            "input_tokens": 11880,
+            "output_tokens": 16043,
+            "cache_read_input_tokens": 204032,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "ca48f03a02c7b7376a4a7d59490d63e8217938cd8dab289d727bdf71e8835bea"
+        },
+        {
+          "split": "dev",
+          "task_id": "4fab96f_1",
+          "scenario_id": "4fab96f",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 44719,
+          "http_attempts": 19,
+          "confirmed_usage": {
+            "input_tokens": 11479,
+            "output_tokens": 5305,
+            "cache_read_input_tokens": 157568,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "5c57af6021996293438afacae26b61905c3aed90804860fbd0b2e0da0af0e710"
+        },
+        {
+          "split": "dev",
+          "task_id": "4fab96f_1",
+          "scenario_id": "4fab96f",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 37062,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 18766,
+            "output_tokens": 4173,
+            "cache_read_input_tokens": 189952,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "6eb8705cc608b618f60ffaa54ff665502d0496ae21fff66e1ad530058ac4bcb5"
+        },
+        {
+          "split": "dev",
+          "task_id": "4fab96f_2",
+          "scenario_id": "4fab96f",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 44218,
+          "http_attempts": 18,
+          "confirmed_usage": {
+            "input_tokens": 16299,
+            "output_tokens": 5940,
+            "cache_read_input_tokens": 171264,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "627f72629dac74fe11d455ad6fa12aaa75cabfef00d4d7becbc55ad1634eb8b0"
+        },
+        {
+          "split": "dev",
+          "task_id": "4fab96f_2",
+          "scenario_id": "4fab96f",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 35016,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 21532,
+            "output_tokens": 3692,
+            "cache_read_input_tokens": 169600,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "82e34e27e11b8444a60252025a5a57627f7df4cb16b1af079c0653fb9627093f"
+        },
+        {
+          "split": "dev",
+          "task_id": "4fab96f_3",
+          "scenario_id": "4fab96f",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 46452,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 15211,
+            "output_tokens": 4557,
+            "cache_read_input_tokens": 218240,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "69c756563614cc1fd4fd8a337c56ef69acb3be4fa5d4739c2f5524b6b5d26f5c"
+        },
+        {
+          "split": "dev",
+          "task_id": "4fab96f_3",
+          "scenario_id": "4fab96f",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 37937,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 8366,
+            "output_tokens": 3413,
+            "cache_read_input_tokens": 88192,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "e911e47bbf61a2e03a8f2c481e02bed3a3c9e23ce4eed9bc47b1efd9daf46cb5"
+        },
+        {
+          "split": "dev",
+          "task_id": "50e1ac9_1",
+          "scenario_id": "50e1ac9",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 33312,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 10727,
+            "output_tokens": 3433,
+            "cache_read_input_tokens": 109184,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "5e7bc1d4426a540a1c245aab739308451b7db95391d46522df4addf16a2c3581"
+        },
+        {
+          "split": "dev",
+          "task_id": "50e1ac9_1",
+          "scenario_id": "50e1ac9",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 29437,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 8653,
+            "output_tokens": 2127,
+            "cache_read_input_tokens": 78336,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b9b63c0ced4a94634c569518d0aabaf0ac9768d7122b00a9c16a6e7d678c8a68"
+        },
+        {
+          "split": "dev",
+          "task_id": "50e1ac9_2",
+          "scenario_id": "50e1ac9",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 41265,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 10080,
+            "output_tokens": 3363,
+            "cache_read_input_tokens": 130432,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "de1fe81cb52eafff47c821519036f2b0cc6121cf11eaacfa45a243d9bdf4fbe2"
+        },
+        {
+          "split": "dev",
+          "task_id": "50e1ac9_2",
+          "scenario_id": "50e1ac9",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 35515,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 11809,
+            "output_tokens": 3429,
+            "cache_read_input_tokens": 110080,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "55b5813ba017160046a1910c78c05d9f0547781a90159bf9a0aca8dd01245414"
+        },
+        {
+          "split": "dev",
+          "task_id": "50e1ac9_3",
+          "scenario_id": "50e1ac9",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 36500,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 9602,
+            "output_tokens": 3189,
+            "cache_read_input_tokens": 114432,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "f523373ba425ecfe9319eadcab2bec0142d3b7076099f7e76ab0d575a29c6062"
+        },
+        {
+          "split": "dev",
+          "task_id": "50e1ac9_3",
+          "scenario_id": "50e1ac9",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 42672,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 12600,
+            "output_tokens": 4456,
+            "cache_read_input_tokens": 124416,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "82cc8f55b6466252569f186ecf1235eebd2d4542a82a5ecb3c124f318d9a24ab"
+        },
+        {
+          "split": "dev",
+          "task_id": "530b157_1",
+          "scenario_id": "530b157",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 34969,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 9472,
+            "output_tokens": 3177,
+            "cache_read_input_tokens": 96256,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "52dc945efb626f2dbdbbce8768d2373e6166f1d09ca965cb780d2b5b46091737"
+        },
+        {
+          "split": "dev",
+          "task_id": "530b157_1",
+          "scenario_id": "530b157",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 52359,
+          "http_attempts": 24,
+          "confirmed_usage": {
+            "input_tokens": 11929,
+            "output_tokens": 4838,
+            "cache_read_input_tokens": 185984,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "9d4c0bb8e7e0a58b305d1b47943fa91cba7b3f784026704c9cb9bea98e4278c4"
+        },
+        {
+          "split": "dev",
+          "task_id": "530b157_2",
+          "scenario_id": "530b157",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 49906,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 14929,
+            "output_tokens": 6783,
+            "cache_read_input_tokens": 145792,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b39e3bdf7573f12fa301ce273fdba2da1f23228cff5ad400dc05f0642986c454"
+        },
+        {
+          "split": "dev",
+          "task_id": "530b157_2",
+          "scenario_id": "530b157",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 44671,
+          "http_attempts": 18,
+          "confirmed_usage": {
+            "input_tokens": 13353,
+            "output_tokens": 5067,
+            "cache_read_input_tokens": 157568,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "a66f95e01fe39429b6bbff71d9460cbec8c3e3adc5813f89f6e27b028542b2a4"
+        },
+        {
+          "split": "dev",
+          "task_id": "530b157_3",
+          "scenario_id": "530b157",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 43094,
+          "http_attempts": 18,
+          "confirmed_usage": {
+            "input_tokens": 26634,
+            "output_tokens": 4785,
+            "cache_read_input_tokens": 235904,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "1a2dfabd868ec5864fe924b4e1c1534eff98c37309311cc45b8be480a9496eec"
+        },
+        {
+          "split": "dev",
+          "task_id": "530b157_3",
+          "scenario_id": "530b157",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 32454,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 13203,
+            "output_tokens": 2807,
+            "cache_read_input_tokens": 124288,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "8b31dc107e29f38fb1aa7d592a928546435d645a4ab012c9aacedc167b47bee7"
+        },
+        {
+          "split": "dev",
+          "task_id": "57c3486_1",
+          "scenario_id": "57c3486",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 41609,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 16117,
+            "output_tokens": 3484,
+            "cache_read_input_tokens": 147712,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "83c5c53fb13bf1c3536ab64b95218adaf050b73d784ec226c265fb2a284d8cd2"
+        },
+        {
+          "split": "dev",
+          "task_id": "57c3486_1",
+          "scenario_id": "57c3486",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 38500,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 11461,
+            "output_tokens": 3135,
+            "cache_read_input_tokens": 134400,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "a83f3f8b26f2bc93855362404c58e5c241e9e1ca6c5007f06fb3db559a11dffb"
+        },
+        {
+          "split": "dev",
+          "task_id": "57c3486_2",
+          "scenario_id": "57c3486",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 32530,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 9335,
+            "output_tokens": 2709,
+            "cache_read_input_tokens": 87680,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "49424e969d5249569f386677ac7a8508b0e56ed2b0f8902f6620b8dc40a84c77"
+        },
+        {
+          "split": "dev",
+          "task_id": "57c3486_2",
+          "scenario_id": "57c3486",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 31077,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 9628,
+            "output_tokens": 2761,
+            "cache_read_input_tokens": 81792,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "55ea90fbec9b6712a1e0713f0d95eb4eb218cf30324c4a324943a65827bdf892"
+        },
+        {
+          "split": "dev",
+          "task_id": "57c3486_3",
+          "scenario_id": "57c3486",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 70406,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 17523,
+            "output_tokens": 2906,
+            "cache_read_input_tokens": 101120,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "eee52f7bbf8b2217999f09308a504b3df7d297de946540fe2503ee2c249747f3"
+        },
+        {
+          "split": "dev",
+          "task_id": "57c3486_3",
+          "scenario_id": "57c3486",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 34797,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 12087,
+            "output_tokens": 2492,
+            "cache_read_input_tokens": 100864,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "8d9ab2e047eb498277eb8eb7fecc095766e00e926e375472d84785d701f64a59"
+        },
+        {
+          "split": "dev",
+          "task_id": "6171bbc_1",
+          "scenario_id": "6171bbc",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 35983,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 9954,
+            "output_tokens": 3586,
+            "cache_read_input_tokens": 108800,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "fcaf5d40ecf806231a06a04a60936bba52faf9bb2ff3298a51deb3d89e1bc94c"
+        },
+        {
+          "split": "dev",
+          "task_id": "6171bbc_1",
+          "scenario_id": "6171bbc",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 39734,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 11068,
+            "output_tokens": 4281,
+            "cache_read_input_tokens": 128128,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "fbf246f60d0aeb42e92365dba85c2bf48ff81d9057487a9a55de1b28d892987f"
+        },
+        {
+          "split": "dev",
+          "task_id": "6171bbc_2",
+          "scenario_id": "6171bbc",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 37391,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 10882,
+            "output_tokens": 3584,
+            "cache_read_input_tokens": 115712,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "f88d1c2dc1c972cab1e3539225afe60ce35bcc7a6df1c6f913fe36930ab2b31d"
+        },
+        {
+          "split": "dev",
+          "task_id": "6171bbc_2",
+          "scenario_id": "6171bbc",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 40109,
+          "http_attempts": 17,
+          "confirmed_usage": {
+            "input_tokens": 11241,
+            "output_tokens": 4142,
+            "cache_read_input_tokens": 138624,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "812a01addc983b013520501b2469f1061a1541dbc793c7734d519c67e4799db5"
+        },
+        {
+          "split": "dev",
+          "task_id": "6171bbc_3",
+          "scenario_id": "6171bbc",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 33375,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 9688,
+            "output_tokens": 3201,
+            "cache_read_input_tokens": 84224,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "03e68be15dd96a725b43d4fc4e703e66f4a26d1a93a3438d5861d321d5e5df79"
+        },
+        {
+          "split": "dev",
+          "task_id": "6171bbc_3",
+          "scenario_id": "6171bbc",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 29905,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 11387,
+            "output_tokens": 2467,
+            "cache_read_input_tokens": 97408,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "5177b3ef1ea98e220ebaaa07d893e41721a8e7915f9f057935a6385dcd6699a7"
+        },
+        {
+          "split": "dev",
+          "task_id": "68ee2c9_1",
+          "scenario_id": "68ee2c9",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 48422,
+          "http_attempts": 20,
+          "confirmed_usage": {
+            "input_tokens": 14878,
+            "output_tokens": 5602,
+            "cache_read_input_tokens": 172928,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "d59915f27f9571827c22e1e77fd9252248bbdd5185581a1f1a9bb93fc360c48f"
+        },
+        {
+          "split": "dev",
+          "task_id": "68ee2c9_1",
+          "scenario_id": "68ee2c9",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 35484,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 13756,
+            "output_tokens": 3147,
+            "cache_read_input_tokens": 88320,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "0d4863786d76a10f1e563bf9baf000eb2f18a9b933176f4352b0b946869b568d"
+        },
+        {
+          "split": "dev",
+          "task_id": "68ee2c9_2",
+          "scenario_id": "68ee2c9",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 42407,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 12367,
+            "output_tokens": 4796,
+            "cache_read_input_tokens": 109952,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "46e0347700946e724224168122892b2fd9594625dbc0d6d034e33f4483370c58"
+        },
+        {
+          "split": "dev",
+          "task_id": "68ee2c9_2",
+          "scenario_id": "68ee2c9",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 41092,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 11480,
+            "output_tokens": 4349,
+            "cache_read_input_tokens": 103296,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "bbfabb48d8567d650c9df39eaf162efb6cf80f71316a49f3cacca06aba0e7436"
+        },
+        {
+          "split": "dev",
+          "task_id": "68ee2c9_3",
+          "scenario_id": "68ee2c9",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 40937,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 13475,
+            "output_tokens": 4423,
+            "cache_read_input_tokens": 101504,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "71dcb751ba065c8c341d3d1e78f3d98309d1fa30251d4a5fd0a1343642216871"
+        },
+        {
+          "split": "dev",
+          "task_id": "68ee2c9_3",
+          "scenario_id": "68ee2c9",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 35156,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 14995,
+            "output_tokens": 3355,
+            "cache_read_input_tokens": 110464,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "603b63d537296a1149a787947217bfcf3f27ac7db042872059305a4157584b8b"
+        },
+        {
+          "split": "dev",
+          "task_id": "6bdbc26_1",
+          "scenario_id": "6bdbc26",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 19827,
+          "http_attempts": 10,
+          "confirmed_usage": {
+            "input_tokens": 5841,
+            "output_tokens": 1043,
+            "cache_read_input_tokens": 38912,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "06474d889499f63d0c929aa062072ed511d7752579eb73592525b25be2052584"
+        },
+        {
+          "split": "dev",
+          "task_id": "6bdbc26_1",
+          "scenario_id": "6bdbc26",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 20592,
+          "http_attempts": 10,
+          "confirmed_usage": {
+            "input_tokens": 5274,
+            "output_tokens": 873,
+            "cache_read_input_tokens": 35072,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "3a6142491400640cabe6e2ec940ad0ea7c8ea9c09740600bb1474beed3e3485b"
+        },
+        {
+          "split": "dev",
+          "task_id": "6bdbc26_2",
+          "scenario_id": "6bdbc26",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 20657,
+          "http_attempts": 11,
+          "confirmed_usage": {
+            "input_tokens": 5566,
+            "output_tokens": 1082,
+            "cache_read_input_tokens": 43136,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "64fd795200861de002465e54dddb7ada2284f66087525e098b8a5c579a4d3ded"
+        },
+        {
+          "split": "dev",
+          "task_id": "6bdbc26_2",
+          "scenario_id": "6bdbc26",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 20344,
+          "http_attempts": 9,
+          "confirmed_usage": {
+            "input_tokens": 5541,
+            "output_tokens": 885,
+            "cache_read_input_tokens": 32640,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "c3e7a9065223f27893a084bcd7cf53efb660dc02ecb137651bd3a13003434782"
+        },
+        {
+          "split": "dev",
+          "task_id": "6bdbc26_3",
+          "scenario_id": "6bdbc26",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 21531,
+          "http_attempts": 10,
+          "confirmed_usage": {
+            "input_tokens": 6205,
+            "output_tokens": 871,
+            "cache_read_input_tokens": 39424,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b3e9c4d33a5349ca4e5acaeb6be5104b120be595a4ea7a57ef32cc74d5cb5179"
+        },
+        {
+          "split": "dev",
+          "task_id": "6bdbc26_3",
+          "scenario_id": "6bdbc26",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 22109,
+          "http_attempts": 11,
+          "confirmed_usage": {
+            "input_tokens": 5374,
+            "output_tokens": 1180,
+            "cache_read_input_tokens": 42368,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "25acdd710bd9070318ec84e7568872bf370f1ded75c644204c8fe5789922628a"
+        },
+        {
+          "split": "dev",
+          "task_id": "6c2c621_1",
+          "scenario_id": "6c2c621",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 31530,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 11961,
+            "output_tokens": 2420,
+            "cache_read_input_tokens": 93696,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "90b61d25a0395973aa29fe902b0eb1bd9e23050eacfe955d969e84efdce7ae2b"
+        },
+        {
+          "split": "dev",
+          "task_id": "6c2c621_1",
+          "scenario_id": "6c2c621",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 33984,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 11797,
+            "output_tokens": 3417,
+            "cache_read_input_tokens": 102272,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "9bc018570f2eb01a6a5e42400f467a29d4b53399b52f2579ac16e80b09244d08"
+        },
+        {
+          "split": "dev",
+          "task_id": "6c2c621_2",
+          "scenario_id": "6c2c621",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 34125,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 15552,
+            "output_tokens": 3181,
+            "cache_read_input_tokens": 115840,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "6e0300f5d079278d4211ef774f695c2ec42b7c56ae3e7cd20c532d630f7da661"
+        },
+        {
+          "split": "dev",
+          "task_id": "6c2c621_2",
+          "scenario_id": "6c2c621",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 29015,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 10113,
+            "output_tokens": 2206,
+            "cache_read_input_tokens": 75008,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "e93caca20a9e7aebad2999459f76d290828efe6f1a7495b4451dcc11bb9a7028"
+        },
+        {
+          "split": "dev",
+          "task_id": "6c2c621_3",
+          "scenario_id": "6c2c621",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 30717,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 12163,
+            "output_tokens": 2424,
+            "cache_read_input_tokens": 95232,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "0b85c927e2066712bc473a59ba2cfa093f982b91056eee69ef7c368cdc6efdbb"
+        },
+        {
+          "split": "dev",
+          "task_id": "6c2c621_3",
+          "scenario_id": "6c2c621",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 33750,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 13310,
+            "output_tokens": 2870,
+            "cache_read_input_tokens": 112768,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "876cf148198cb5affb76d25a672b97376eb5162299a30211a994e27fa7c65786"
+        },
+        {
+          "split": "dev",
+          "task_id": "b119b1f_1",
+          "scenario_id": "b119b1f",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 30187,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 8146,
+            "output_tokens": 2095,
+            "cache_read_input_tokens": 91008,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "84a3bec441ad7b910cd7d4ac20c3cfb8baa227750cb0fe1747074d02e56a05d8"
+        },
+        {
+          "split": "dev",
+          "task_id": "b119b1f_1",
+          "scenario_id": "b119b1f",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 20500,
+          "http_attempts": 9,
+          "confirmed_usage": {
+            "input_tokens": 6249,
+            "output_tokens": 1237,
+            "cache_read_input_tokens": 34816,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "4e311dbcfe6754512a29d0dcc5ff703bfc0888e5503c285801d523cad2126e2c"
+        },
+        {
+          "split": "dev",
+          "task_id": "b119b1f_2",
+          "scenario_id": "b119b1f",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 26343,
+          "http_attempts": 11,
+          "confirmed_usage": {
+            "input_tokens": 6721,
+            "output_tokens": 1895,
+            "cache_read_input_tokens": 46592,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "1673067aaf40b75fb20ce9fdf0bcb5c95d00b9bddcfbf0901aa09d2edd928229"
+        },
+        {
+          "split": "dev",
+          "task_id": "b119b1f_2",
+          "scenario_id": "b119b1f",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 22859,
+          "http_attempts": 10,
+          "confirmed_usage": {
+            "input_tokens": 5681,
+            "output_tokens": 1665,
+            "cache_read_input_tokens": 39680,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "4f6b2fa4172f0f0997c7b753b6adb293c183a7245eb91e4cea72d94cd02fbe63"
+        },
+        {
+          "split": "dev",
+          "task_id": "b119b1f_3",
+          "scenario_id": "b119b1f",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 30265,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 8773,
+            "output_tokens": 2680,
+            "cache_read_input_tokens": 67584,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "ff98aa2fa6aeaa914abebd5ad6978932818b9dad49e7a3e3f7cb623f0a468fbd"
+        },
+        {
+          "split": "dev",
+          "task_id": "b119b1f_3",
+          "scenario_id": "b119b1f",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 24687,
+          "http_attempts": 11,
+          "confirmed_usage": {
+            "input_tokens": 6407,
+            "output_tokens": 1776,
+            "cache_read_input_tokens": 48768,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "4dc52abf388f3dcdac5ec880ff44dc3c239152aa6941c76a803bc0b78d21c218"
+        },
+        {
+          "split": "dev",
+          "task_id": "d4e9306_1",
+          "scenario_id": "d4e9306",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 29875,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 8405,
+            "output_tokens": 2662,
+            "cache_read_input_tokens": 80384,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "26f9f3d062d5c7c7f6ee822aefa9edde703cca862684717ff6b50f1f4cf8e070"
+        },
+        {
+          "split": "dev",
+          "task_id": "d4e9306_1",
+          "scenario_id": "d4e9306",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 28734,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 8291,
+            "output_tokens": 2318,
+            "cache_read_input_tokens": 77312,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "4f3a116f7bc34f5b2412232aec900f6014e1807fa8275da820ac7014b4b4ab32"
+        },
+        {
+          "split": "dev",
+          "task_id": "d4e9306_2",
+          "scenario_id": "d4e9306",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 26625,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 8203,
+            "output_tokens": 2319,
+            "cache_read_input_tokens": 62336,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "82299271ec85366f8b518e5779a792eadcbfd28663e74076107b4fc2cc78fd2b"
+        },
+        {
+          "split": "dev",
+          "task_id": "d4e9306_2",
+          "scenario_id": "d4e9306",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 28483,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 7480,
+            "output_tokens": 2773,
+            "cache_read_input_tokens": 77440,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "37068f85dfb285369c5b15dab58f9471290c8b2493597009c56cc89d25904722"
+        },
+        {
+          "split": "dev",
+          "task_id": "d4e9306_3",
+          "scenario_id": "d4e9306",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 30578,
+          "http_attempts": 15,
+          "confirmed_usage": {
+            "input_tokens": 8114,
+            "output_tokens": 2464,
+            "cache_read_input_tokens": 83840,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "cf675d4d4ebe3255062fd56c5a1b11b077b7357f4a535c584bfd387828b530b6"
+        },
+        {
+          "split": "dev",
+          "task_id": "d4e9306_3",
+          "scenario_id": "d4e9306",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 27000,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 11106,
+            "output_tokens": 2347,
+            "cache_read_input_tokens": 76672,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "5eae6c0bb66ceaf428d96701802a3ddb65d49d1f40ad689eab41f28a8abb4fe2"
+        },
+        {
+          "split": "dev",
+          "task_id": "df61dc5_1",
+          "scenario_id": "df61dc5",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 47920,
+          "http_attempts": 22,
+          "confirmed_usage": {
+            "input_tokens": 9987,
+            "output_tokens": 4859,
+            "cache_read_input_tokens": 147584,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "fd8bbe01ebd6399fcb67a8b6976d5c754f33d8d6e30f35b662a10e613fa32730"
+        },
+        {
+          "split": "dev",
+          "task_id": "df61dc5_1",
+          "scenario_id": "df61dc5",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 31704,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 8285,
+            "output_tokens": 3143,
+            "cache_read_input_tokens": 82560,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "5e6da69bf6b98ee7c56a1bcac82bb335541da10e2df9fa185ae0d03b94b76e0d"
+        },
+        {
+          "split": "dev",
+          "task_id": "df61dc5_2",
+          "scenario_id": "df61dc5",
+          "variant": "A",
+          "official_pass": false,
+          "official_failed_checks": 1,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 29655,
+          "http_attempts": 11,
+          "confirmed_usage": {
+            "input_tokens": 9895,
+            "output_tokens": 3085,
+            "cache_read_input_tokens": 69248,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b88ca78b2d24d6cb5d5f386245e854d04c20b04f4702de9ae789dc4df91e4995"
+        },
+        {
+          "split": "dev",
+          "task_id": "df61dc5_2",
+          "scenario_id": "df61dc5",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 37641,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 12356,
+            "output_tokens": 4517,
+            "cache_read_input_tokens": 115328,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "81b9a2600e8ff52397351dfb964c14594d550cc902fc7a9ad8e69e3a373e91fa"
+        },
+        {
+          "split": "dev",
+          "task_id": "df61dc5_3",
+          "scenario_id": "df61dc5",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 33577,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 26274,
+            "output_tokens": 3104,
+            "cache_read_input_tokens": 145920,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "31881237a19c63b1e27c63d42cb87723c4e9480a547f09a7c631bfb02852d6d7"
+        },
+        {
+          "split": "dev",
+          "task_id": "df61dc5_3",
+          "scenario_id": "df61dc5",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 44015,
+          "http_attempts": 16,
+          "confirmed_usage": {
+            "input_tokens": 15203,
+            "output_tokens": 5553,
+            "cache_read_input_tokens": 135040,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "f7666123473cbdcd50dd63450fe0e31570bb9d948d87c4053769eadb58045dc7"
+        },
+        {
+          "split": "dev",
+          "task_id": "fac291d_1",
+          "scenario_id": "fac291d",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 27405,
+          "http_attempts": 11,
+          "confirmed_usage": {
+            "input_tokens": 9168,
+            "output_tokens": 2420,
+            "cache_read_input_tokens": 61824,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "7c59942bf163473697967a47fc181eb216108a15a7187c28287c8b0349740d65"
+        },
+        {
+          "split": "dev",
+          "task_id": "fac291d_1",
+          "scenario_id": "fac291d",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 59718,
+          "http_attempts": 19,
+          "confirmed_usage": {
+            "input_tokens": 13492,
+            "output_tokens": 6628,
+            "cache_read_input_tokens": 185216,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "37aa6ad6c7f68463fae6197b942eca6b52b0d5fe4f849aff1a2d28c039720d75"
+        },
+        {
+          "split": "dev",
+          "task_id": "fac291d_2",
+          "scenario_id": "fac291d",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 28437,
+          "http_attempts": 12,
+          "confirmed_usage": {
+            "input_tokens": 10244,
+            "output_tokens": 2558,
+            "cache_read_input_tokens": 77696,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "bfcb5b99f92685ce869d6f36f96b26510578681121e8eddf255bbc10785c2eb9"
+        },
+        {
+          "split": "dev",
+          "task_id": "fac291d_2",
+          "scenario_id": "fac291d",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 33280,
+          "http_attempts": 13,
+          "confirmed_usage": {
+            "input_tokens": 9520,
+            "output_tokens": 3173,
+            "cache_read_input_tokens": 82816,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "53ceeb4331d4f4b0635ab70ed3f61bb9e5a7e158e8a11bda56d4b1c33b683da8"
+        },
+        {
+          "split": "dev",
+          "task_id": "fac291d_3",
+          "scenario_id": "fac291d",
+          "variant": "A",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 30936,
+          "http_attempts": 14,
+          "confirmed_usage": {
+            "input_tokens": 7847,
+            "output_tokens": 3107,
+            "cache_read_input_tokens": 81664,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "b8632cf6487b565c6ddcdf35d0236f171732e7111531d7189ba07320572e4661"
+        },
+        {
+          "split": "dev",
+          "task_id": "fac291d_3",
+          "scenario_id": "fac291d",
+          "variant": "B",
+          "official_pass": true,
+          "official_failed_checks": 0,
+          "runtime_status": "succeeded",
+          "runtime_reason": "completed",
+          "latency_ms": 81030,
+          "http_attempts": 24,
+          "confirmed_usage": {
+            "input_tokens": 17627,
+            "output_tokens": 11279,
+            "cache_read_input_tokens": 329088,
+            "cache_creation_input_tokens": 0
+          },
+          "usage_complete": true,
+          "attempt_sha256": "517b64d0a9d9c528654cc9ae368fac9d9a9996fd145d9cd1df2e980551d132cd"
+        }
+      ],
+      "aggregate": {
+        "variants": {
+          "A": {
+            "task_count": 57,
+            "passed_tasks": 20,
+            "scenario_count": 19,
+            "passed_scenarios": 5,
+            "tgc_percent": 35.1,
+            "sgc_percent": 26.3,
+            "runtime_status_counts": {
+              "succeeded": 57
+            },
+            "runtime_reason_counts": {
+              "completed": 57
+            },
+            "official_failed_checks": 42,
+            "median_latency_seconds": 33.375,
+            "http_attempts": 837,
+            "confirmed_usage": {
+              "input_tokens": 662980,
+              "output_tokens": 208148,
+              "cache_read_input_tokens": 6200192,
+              "cache_creation_input_tokens": 0
+            },
+            "estimated_confirmed_nano_cny": 3239151680
+          },
+          "B": {
+            "task_count": 57,
+            "passed_tasks": 54,
+            "scenario_count": 19,
+            "passed_scenarios": 17,
+            "tgc_percent": 94.7,
+            "sgc_percent": 89.5,
+            "runtime_status_counts": {
+              "failed": 1,
+              "succeeded": 56
+            },
+            "runtime_reason_counts": {
+              "completed": 56,
+              "max_tokens": 1
+            },
+            "official_failed_checks": 7,
+            "median_latency_seconds": 34.797,
+            "http_attempts": 835,
+            "confirmed_usage": {
+              "input_tokens": 642237,
+              "output_tokens": 221839,
+              "cache_read_input_tokens": 6206080,
+              "cache_creation_input_tokens": 0
+            },
+            "estimated_confirmed_nano_cny": 3307429200
+          }
+        },
+        "paired_outcomes": {
+          "A_win": 0,
+          "B_win": 34,
+          "both_pass": 20,
+          "both_fail": 3
+        }
+      },
+      "raw_automatic_collateral_failed_checks": {
+        "A": null,
+        "B": null
+      },
+      "source_evidence_sha256": {
+        "result": "6cbd55d0cdbb3df0d3e51056c4b782d5e5731d88faeed0ad035a8801265c3f05",
+        "checkpoint": "63dbc6a6a96b0438bbb71440a38d9d170746a5387814f221061cd57b401b563a",
+        "freeze": "002afeaa87c2171b4f79c43ad357a88bcf78ca076672a683efef941ba769c7b8",
+        "official_A": "616eca36fca3c62fe4207f5dc6904e51822f2d7f2059b235de77603d16469407",
+        "official_B": "9ede3afb063e5ee053f9f2913f948797d006dedd3222471de93aa36ac2cbeb21"
+      }
+    }
+  },
+  "manual_review": {
+    "scope": "dev",
+    "source_sha256": "de957b21adb94066f7d01e38e78a0472fd2cce266ce81747fad0279611ab0a99",
+    "definition": "Count each distinct failed official check only when its trace confirms an actual unexpected state change. Overlapping checks count separately; affected tasks are also reported. Missing required changes alone are excluded. Manual judgments do not replace raw automatic unknown values.",
+    "counted_checks": [
+      {
+        "task_id": "37a8675_1",
+        "variant": "A",
+        "failure_index": 1,
+        "category": "actual_extra_model_changes",
+        "trace_sha256": "cdf9244a49c82b68ee18dfc168c8592bb4c0c0cba91995637c626a1966014dba"
+      },
+      {
+        "task_id": "37a8675_2",
+        "variant": "A",
+        "failure_index": 1,
+        "category": "actual_extra_model_changes",
+        "trace_sha256": "cdf9244a49c82b68ee18dfc168c8592bb4c0c0cba91995637c626a1966014dba"
+      },
+      {
+        "task_id": "3ab5b8b_1",
+        "variant": "A",
+        "failure_index": 1,
+        "category": "extra_and_missing_target_records",
+        "trace_sha256": "c6ba24487100bf57741968fe82b4c7dec37dc4c376ebe349966ba117fba3d74f"
+      },
+      {
+        "task_id": "3ab5b8b_1",
+        "variant": "A",
+        "failure_index": 2,
+        "category": "actual_out_of_scope_added_records",
+        "trace_sha256": "8b16c73ef073aba883015fd64f829fff0ae77661b7bc2c9b35b756c9c1b1dd05"
+      },
+      {
+        "task_id": "3ab5b8b_1",
+        "variant": "A",
+        "failure_index": 3,
+        "category": "actual_out_of_scope_added_records",
+        "trace_sha256": "9dc00bfc81390b2595eeba08296aa8f35e0acd9f3f6b96c0ecb35afebf83ee2d"
+      },
+      {
+        "task_id": "37a8675_1",
+        "variant": "B",
+        "failure_index": 0,
+        "category": "actual_extra_model_changes",
+        "trace_sha256": "fac8cf18ecf79b9975b4abbb5d225f71446e4184cf66bcae4b75a9185481857d"
+      },
+      {
+        "task_id": "37a8675_3",
+        "variant": "B",
+        "failure_index": 0,
+        "category": "actual_extra_model_changes",
+        "trace_sha256": "fac8cf18ecf79b9975b4abbb5d225f71446e4184cf66bcae4b75a9185481857d"
+      }
+    ],
+    "counts": {
+      "A": {
+        "failed_checks": 5,
+        "affected_tasks": 3
+      },
+      "B": {
+        "failed_checks": 2,
+        "affected_tasks": 2
+      }
+    },
+    "new_B_affected_tasks": [
+      "37a8675_3"
+    ],
+    "removed_in_B_tasks": [
+      "37a8675_2",
+      "3ab5b8b_1"
+    ],
+    "shared_affected_tasks": [
+      "37a8675_1"
+    ]
+  },
+  "cost": {
+    "unit": "nano_CNY",
+    "estimate_basis": "frozen_peak_prices_not_account_invoice",
+    "frozen_peak_nano_cny_per_token": {
+      "input_tokens": 2000,
+      "output_tokens": 8000,
+      "cache_read_input_tokens": 40
+    },
+    "cap_nano_cny": 50000000000,
+    "http_attempts": 2149,
+    "confirmed_nano_cny": 8917066800,
+    "unknown_reserved_nano_cny": 2162688000,
+    "remaining_nano_cny": 38920245200,
+    "earlier_interrupted_batch": {
+      "http_attempts": 98,
+      "settled_http_attempts": 97,
+      "unknown_http_attempts": 1,
+      "confirmed_usage": {
+        "input_tokens": 119130,
+        "output_tokens": 30612,
+        "cache_read_input_tokens": 1062144,
+        "cache_creation_input_tokens": 0
+      },
+      "confirmed_nano_cny": 525641760,
+      "unknown_reserved_nano_cny": 2162688000
+    }
+  },
+  "limitations": [
+    "Single paired observation with one run per task and variant; not a repeated-trial improvement estimate.",
+    "The 12 train tasks are a selected diagnostic subset, not the complete train split.",
+    "No complete test_normal result is claimed; the earlier 63/168 experiment is separate and incomplete.",
+    "Official pass and runtime success are independent; B includes a max_tokens runtime failure in dev.",
+    "Most dev gains correct answer-submission behavior; this is not evidence of general planning or reasoning improvement.",
+    "B has a higher latency median and slightly higher estimated cost on dev.",
+    "Manual unexpected-change totals decrease, but B introduces a new regression on task 37a8675_3.",
+    "Published hashes identify locally retained source evidence; readers cannot independently verify private traces from this summary.",
+    "The verifier checks public-summary consistency, not official scoring or the truth of manual trace classifications.",
+    "Costs use frozen peak prices rather than an account invoice; unknown usage keeps its full reservation."
+  ]
+}

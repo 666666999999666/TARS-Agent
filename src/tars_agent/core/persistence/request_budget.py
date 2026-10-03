@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -11,6 +12,38 @@ RequestKind = Literal["real", "probe"]
 
 class ModelRequestBudgetExceeded(RuntimeError):
     """The authorized real-request allowance has been exhausted."""
+
+
+def validate_existing_request_ledger(path: Path) -> Path:
+    """Validate an explicitly selected ledger without creating or initializing it."""
+    invalid = "Request budget must be an existing absolute path to a valid request ledger"
+    try:
+        expanded = path.expanduser()
+        if not expanded.is_absolute():
+            raise ValueError(invalid)
+        canonical = expanded.resolve(strict=True)
+        if not canonical.is_file():
+            raise ValueError(invalid)
+        with closing(sqlite3.connect(canonical.as_uri() + "?mode=ro", uri=True)) as connection:
+            if connection.execute(
+                "SELECT type FROM sqlite_master WHERE name = 'requests'"
+            ).fetchone() != ("table",):
+                raise ValueError(invalid)
+            columns = {row[1]: row for row in connection.execute("PRAGMA table_info(requests)")}
+            for name, declared_type, required, primary_key in (
+                ("id", "INTEGER", 0, 1),
+                ("kind", "TEXT", 1, 0),
+                ("reserved_at", "TEXT", 1, 0),
+            ):
+                column = columns.get(name)
+                if column is None or (
+                    column[2].upper(), column[3], column[5]
+                ) != (declared_type, required, primary_key):
+                    raise ValueError(invalid)
+            connection.execute("SELECT id,kind,reserved_at FROM requests LIMIT 1").fetchall()
+    except (OSError, RuntimeError, sqlite3.Error):
+        raise ValueError(invalid) from None
+    return canonical
 
 
 class RequestLedger:

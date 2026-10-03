@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "suite_id": "tars-deepseek-completion-contract-train-v1",
+  "name": "DeepSeek completion prompt A/B on twelve frozen AppWorld train tasks",
+  "description": "Four complete train scenarios; A is the original prompt, B changes only the complete_task answer clause. One run per task and variant, alternating AB/BA. No test_normal continuation.",
+  "adapter": "appworld",
+  "execution_mode": "agent_tasks",
+  "model_config_ref": {"source": "runtime_config", "reference": "deepseek-flash-official-anthropic-v1", "model": "deepseek-flash"},
+  "default_repetitions": 1,
+  "sandbox_mode": "required",
+  "tasks": [],
+  "appworld": {
+    "data_root": "build/appworld/data-root", "dataset": "train", "workers": 1,
+    "max_steps": 60, "task_timeout_s": 900, "infrastructure_retries": 1,
+    "paired_comparison": true,
+    "task_ids": ["22cc237_1", "22cc237_2", "22cc237_3", "27e1026_1", "27e1026_2", "27e1026_3", "692c77d_1", "692c77d_2", "692c77d_3", "76f2c72_1", "76f2c72_2", "76f2c72_3"]
+  }
+}

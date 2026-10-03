@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.integration.python_process import python_module_command
+
 _COLLECTION_HOME = tempfile.TemporaryDirectory(prefix="tars-test-collection-")
 atexit.register(_COLLECTION_HOME.cleanup)
 # Explicit real-model tests keep only the user's requested model credentials. Ordinary
@@ -91,44 +93,49 @@ async def running_daemon(
     env["TARS_HOME"] = str(tmp_path / "tars-home")
 
     proc = subprocess.Popen(
-        [sys.executable, "-m", "tars_agent.core"],
+        python_module_command("tests.integration.offline_core"),
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
 
-    deadline = time.monotonic() + 10.0
-    while time.monotonic() < deadline:
-        await asyncio.sleep(0.05)
-        if proc.poll() is not None:
-            stdout, stderr = proc.communicate()
+    try:
+        deadline = time.monotonic() + 45.0
+        while time.monotonic() < deadline:
+            await asyncio.sleep(0.05)
+            if proc.poll() is not None:
+                stdout, stderr = proc.communicate()
+                pytest.fail(
+                    "Daemon exited before startup "
+                    f"(code={proc.returncode})\n"
+                    f"stdout:\n{stdout.decode(errors='replace')}\n"
+                    f"stderr:\n{stderr.decode(errors='replace')}"
+                )
+            try:
+                _reader, writer = await asyncio.open_connection("127.0.0.1", free_port)
+                writer.close()
+                await writer.wait_closed()
+                break
+            except (ConnectionRefusedError, OSError):
+                pass
+        else:
+            stdout, stderr = await asyncio.to_thread(_stop_test_daemon, proc)
             pytest.fail(
-                "Daemon exited before startup "
-                f"(code={proc.returncode})\n"
+                "Daemon did not start within 45 seconds\n"
                 f"stdout:\n{stdout.decode(errors='replace')}\n"
                 f"stderr:\n{stderr.decode(errors='replace')}"
             )
-        try:
-            _reader, writer = await asyncio.open_connection("127.0.0.1", free_port)
-            writer.close()
-            await writer.wait_closed()
-            break
-        except (ConnectionRefusedError, OSError):
-            pass
-    else:
+
+        yield proc
+    finally:
+        await asyncio.to_thread(_stop_test_daemon, proc)
+
+
+def _stop_test_daemon(proc: subprocess.Popen[bytes]) -> tuple[bytes, bytes]:
+    if proc.poll() is None:
         proc.terminate()
-        stdout, stderr = proc.communicate(timeout=2)
-        pytest.fail(
-            "Daemon did not start within 10 seconds\n"
-            f"stdout:\n{stdout.decode(errors='replace')}\n"
-            f"stderr:\n{stderr.decode(errors='replace')}"
-        )
-
-    yield proc
-
-    proc.terminate()
     try:
-        proc.wait(timeout=2)
+        return proc.communicate(timeout=5)
     except subprocess.TimeoutExpired:
         proc.kill()
-        proc.wait()
+        return proc.communicate(timeout=5)

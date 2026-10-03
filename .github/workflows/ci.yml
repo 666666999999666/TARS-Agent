@@ -52,9 +52,23 @@ jobs:
       - name: Offline tests and coverage gates
         run: uv run --no-sync python scripts/qa.py coverage
 
+      - name: Scan checked-out candidate and reachable public history
+        run: uv run --no-sync python scripts/check_public_content.py --history --refs HEAD
+
+      - name: Audit Python code
+        run: uv run --no-sync python -m bandit -c pyproject.toml -r src scripts -ll -ii -f json -o build/qa/bandit.json
+
+      - name: Audit installed locked Python dependencies
+        run: uv run --no-sync python -m pip_audit --local --format json --output build/qa/pip-audit.json
+
       - name: Build sandbox image (Ubuntu)
         if: runner.os == 'Linux'
-        run: docker build --tag tars-agent-sandbox:0.8.0 .
+        shell: bash
+        run: |
+          docker build --tag tars-agent-sandbox:0.8.0 .
+          image_id="$(docker image inspect --format '{{.Id}}' tars-agent-sandbox:0.8.0)"
+          [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "CORE_RECOVERY_IMAGE=$image_id" >> "$GITHUB_ENV"
 
       - name: Real Docker sandbox E2E (Ubuntu)
         if: runner.os == 'Linux'
@@ -62,15 +76,41 @@ jobs:
           TARS_REQUIRE_DOCKER_E2E: "1"
         run: uv run --no-sync pytest tests/integration/test_docker_sandbox_e2e.py -v
 
-      - name: Assert and remove orphaned TARS-Agent containers
-        if: runner.os == 'Linux' && always()
+      - name: Real Core crash recovery and instance isolation (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          RUN_CORE_RECOVERY_DOCKER: "1"
         run: |
-          ids="$(docker ps -aq --filter label=com.tars-agent.sandbox=true)"
-          if [ -n "$ids" ]; then
-            docker rm -f $ids
-            echo "TARS-Agent sandbox containers were orphaned."
-            exit 1
-          fi
+          export CORE_RECOVERY_ROOT="$GITHUB_WORKSPACE/build/core-recovery/ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-isolation"
+          test ! -e "$CORE_RECOVERY_ROOT"
+          uv run --no-sync pytest tests/integration/test_docker_core_recovery.py -v --junitxml=build/qa/core-recovery.xml
+          uv run --no-sync python - <<'PY'
+          import json, os, pathlib, xml.etree.ElementTree as ET
+          cases = ET.parse('build/qa/core-recovery.xml').findall('.//testcase')
+          assert len(cases) == 1 and all(not any(c.find(tag) is not None for tag in ('skipped', 'failure', 'error')) for c in cases)
+          result = json.loads((pathlib.Path(os.environ['CORE_RECOVERY_ROOT']) / 'results.json').read_text())
+          assert result['passed'] is True and result['errors'] == [] and result['fallback_cleanup'] == []
+          assert result['image'] == os.environ['CORE_RECOVERY_IMAGE']
+          PY
+
+      - name: Real worker path boundary (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          RUN_CORE_RECOVERY_DOCKER: "1"
+        run: |
+          export CORE_RECOVERY_ROOT="$GITHUB_WORKSPACE/build/core-recovery/ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-boundary"
+          test ! -e "$CORE_RECOVERY_ROOT"
+          uv run --no-sync pytest tests/integration/test_docker_worker_path_boundary.py -v --junitxml=build/qa/worker-boundary.xml
+          uv run --no-sync python - <<'PY'
+          import json, os, pathlib, xml.etree.ElementTree as ET
+          cases = ET.parse('build/qa/worker-boundary.xml').findall('.//testcase')
+          assert len(cases) == 1 and all(not any(c.find(tag) is not None for tag in ('skipped', 'failure', 'error')) for c in cases)
+          result = json.loads((pathlib.Path(os.environ['CORE_RECOVERY_ROOT']) / 'results.json').read_text())
+          assert result['passed'] is True and result['errors'] == [] and result['full_container_id_absent'] is True
+          assert result['image'] == os.environ['CORE_RECOVERY_IMAGE']
+          PY
 
       - name: Offline integration tests
         run: uv run --no-sync pytest tests/integration -m "not integration and not docker" -v
@@ -94,6 +134,71 @@ jobs:
             python -c "import importlib.resources as r; import tars_agent; assert tars_agent.__version__ == '0.8.0'; assert r.files('tars_agent.web').joinpath('static/index.html').is_file()"
           uv run --isolated --no-project --with $wheel `
             python scripts/smoke_installed_web.py
+
+      - name: Verify complete independent wheel installation (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          case_root="$RUNNER_TEMP/tars-installed-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test ! -e "$case_root"
+          mkdir "$case_root"
+          uv export --locked --no-default-groups --no-emit-project --format requirements.txt --output-file "$case_root/locked-runtime.txt"
+          uv venv --python 3.12 "$case_root/venv"
+          uv pip sync --python "$case_root/venv/bin/python" --require-hashes "$case_root/locked-runtime.txt"
+          wheels=("$GITHUB_WORKSPACE"/build/qa/dist/*.whl)
+          test "${#wheels[@]}" -eq 1 && test -f "${wheels[0]}"
+          uv pip install --python "$case_root/venv/bin/python" --no-deps "${wheels[0]}"
+          cp scripts/verify_installed.py "$case_root/verify_installed.py"
+          cmp scripts/verify_installed.py "$case_root/verify_installed.py"
+          touch "$case_root/empty-config.toml"
+          export INSTALLATION_CASE="$case_root"
+          export INSTALLATION_REPORT="$GITHUB_WORKSPACE/build/qa/installed-verification.json"
+          export INSTALLATION_WHEEL="${wheels[0]}"
+          unset PYTHONPATH PYTHONHOME
+          cd "$case_root"
+          "$case_root/venv/bin/python" - <<'PY'
+          import hashlib, json, os, pathlib, re, sqlite3, subprocess, sys
+          root = pathlib.Path(os.environ['INSTALLATION_CASE']).resolve()
+          output = pathlib.Path(os.environ['INSTALLATION_REPORT'])
+          image = os.environ['CORE_RECOVERY_IMAGE']
+          assert re.fullmatch(r'sha256:[0-9a-f]{64}', image)
+          environment = {
+              key: value for key, value in os.environ.items()
+              if not key.upper().startswith(('TARS_', 'KAMA_', 'ANTHROPIC_', 'OPENAI_', 'DEEPSEEK_'))
+              and not key.upper().endswith('_API_KEY') and key.upper() not in {'PYTHONPATH', 'PYTHONHOME'}
+          }
+          environment.update(TARS_HOME=str(root / 'home'), TARS_CONFIG=str(root / 'empty-config.toml'),
+                             TARS_SANDBOX_MODE='required', TARS_SANDBOX_IMAGE=image,
+                             TARS_TRACE_ENABLED='false', TARS_LOG_FILE='')
+          completed = subprocess.run([sys.executable, str(root / 'verify_installed.py'), '--output', str(output)],
+                                     cwd=root, env=environment, timeout=240, check=False)
+          report = json.loads(output.read_text()) if output.exists() else {}
+          ledger = root / 'home/acceptance/request-budget.sqlite3'
+          requests = 0
+          if ledger.exists():
+              with sqlite3.connect(ledger.as_uri() + '?mode=ro', uri=True) as connection:
+                  requests = connection.execute('SELECT count(*) FROM requests').fetchone()[0]
+          report.update(verifier_returncode=completed.returncode, model_requests=requests,
+                        wheel_sha256=hashlib.sha256(pathlib.Path(os.environ['INSTALLATION_WHEEL']).read_bytes()).hexdigest(),
+                        verifier_sha256=hashlib.sha256((root / 'verify_installed.py').read_bytes()).hexdigest(),
+                        locked_runtime_sha256=hashlib.sha256((root / 'locked-runtime.txt').read_bytes()).hexdigest())
+          output.write_text(json.dumps(report, indent=2) + '\n')
+          assert completed.returncode == 0 and requests == 0
+          for field in ('four_entrypoint_help', 'schema_resources', 'installed_core', 'installed_worker', 'installed_web_health'):
+              assert report[field] == 'passed', field
+          for field in ('core_stopped', 'core_port_closed', 'core_control_removed', 'web_stopped', 'web_port_closed'):
+              assert report[field] is True, field
+          PY
+
+      - name: Assert and remove orphaned TARS-Agent containers
+        if: runner.os == 'Linux' && always()
+        run: |
+          ids="$(docker ps -aq --filter label=com.tars-agent.sandbox=true)"
+          if [ -n "$ids" ]; then
+            docker rm -f $ids
+            echo "TARS-Agent sandbox containers were orphaned."
+            exit 1
+          fi
 
       - name: Prepare sanitized QA diagnostics
         id: qa_artifacts

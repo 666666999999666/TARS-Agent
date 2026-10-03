@@ -104,6 +104,9 @@ def safe_config_snapshot(config: TarsConfig) -> dict[str, JsonValue]:
         "agent": {"max_steps": config.agent.max_steps},
         "llm": {
             "default_model": config.llm.default_model,
+            "expected_model": config.llm.expected_model,
+            "protocol": "anthropic_messages",
+            "thinking": {"request_parameter": "omitted", "behavior": "provider_default"},
             "max_tokens": config.llm.max_tokens,
             "context_budget_tokens": config.llm.context_budget_tokens,
             "context_safety_margin": config.llm.context_safety_margin,
@@ -111,6 +114,7 @@ def safe_config_snapshot(config: TarsConfig) -> dict[str, JsonValue]:
             "attempts": config.llm.attempts,
             "request_limit": config.llm.request_limit,
             "retry_delay_s": config.llm.retry_delay_s,
+            "cost_budget_enabled": config.llm.cost_budget_path is not None,
         },
         "trace": {
             "enabled": config.trace.enabled,

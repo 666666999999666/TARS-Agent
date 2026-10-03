@@ -14,7 +14,9 @@ from tars_agent.core.llm.base import LLMProvider
 from tars_agent.core.llm.budget import ModelRequestBudgetExceeded
 from tars_agent.core.llm.provider import (
     LlmCallTimeoutError,
+    LlmModelMismatchError,
     LlmProtocolError,
+    LlmRateLimitError,
     LlmStreamInterruptedError,
 )
 from tars_agent.core.tools.invocation import invoke_tool
@@ -100,16 +102,27 @@ class AgentLoop:
             except ContextBudgetError as exc:
                 context.mark_failed(str(exc))
                 context.result = "上下文不足或工具消息不完整，模型请求未发送。" + str(exc)
-                log.warning("run_id=%s %s", context.run_id, exc)
+                log.warning(
+                    "LLM stopped run_id=%s reason=context_budget_error error_type=%s",
+                    context.run_id, type(exc).__name__,
+                )
                 break
             except asyncio.CancelledError:
                 context.mark_failed("cancelled")
                 raise
-            except LlmStreamInterruptedError as exc:
-                log.exception(
-                    "LLM stream interrupted after output run_id=%s step=%d",
+            except (LlmStreamInterruptedError, LlmRateLimitError) as exc:
+                reason = (
+                    "llm_rate_limited" if isinstance(exc, LlmRateLimitError)
+                    else "llm_stream_interrupted"
+                )
+                status = getattr(exc.__cause__, "status_code", None)
+                log.error(
+                    "LLM stopped run_id=%s step=%d reason=%s error_type=%s http_status=%s",
                     context.run_id,
                     context.step,
+                    reason,
+                    type(exc).__name__,
+                    status if type(status) is int and 100 <= status <= 599 else None,
                 )
                 if exc.partial_text:
                     # Preserve exactly what was already streamed as an audit-only
@@ -127,20 +140,28 @@ class AgentLoop:
                             ],
                         }
                     )
-                context.mark_failed("llm_stream_interrupted")
-                break
-            except (LlmProtocolError, LlmCallTimeoutError, ModelRequestBudgetExceeded) as exc:
-                reason = {
-                    LlmProtocolError: "llm_protocol_error",
-                    LlmCallTimeoutError: "llm_total_timeout",
-                    ModelRequestBudgetExceeded: "llm_request_budget_exhausted",
-                }[type(exc)]
-                log.error("LLM stopped run_id=%s reason=%s", context.run_id, reason)
                 context.mark_failed(reason)
                 break
-            except Exception:
-                logging.getLogger(__name__).exception(
-                    "LLM call failed run_id=%s step=%d", context.run_id, context.step
+            except (LlmProtocolError, LlmCallTimeoutError, ModelRequestBudgetExceeded) as exc:
+                reason = "llm_request_budget_exhausted" if isinstance(
+                    exc, ModelRequestBudgetExceeded,
+                ) else {
+                    LlmProtocolError: "llm_protocol_error",
+                    LlmModelMismatchError: "llm_model_mismatch",
+                    LlmCallTimeoutError: "llm_total_timeout",
+                }[type(exc)]
+                log.error(
+                    "LLM stopped run_id=%s reason=%s error_type=%s",
+                    context.run_id, reason, type(exc).__name__,
+                )
+                context.mark_failed(reason)
+                break
+            except Exception as exc:
+                status = getattr(exc, "status_code", None)
+                log.error(
+                    "LLM stopped run_id=%s step=%d reason=llm_error error_type=%s http_status=%s",
+                    context.run_id, context.step, type(exc).__name__,
+                    status if type(status) is int and 100 <= status <= 599 else None,
                 )
                 context.mark_failed("llm_error")
                 break

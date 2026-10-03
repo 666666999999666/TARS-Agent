@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 from scripts import qa
 
 
@@ -73,7 +74,7 @@ def test_command_start_failure_also_keeps_a_log(
     monkeypatch.setattr(qa, "ARTIFACT_ROOT", tmp_path)
     with pytest.raises(OSError):
         qa.run(command, label="not-started")
-    assert "FileNotFoundError" in (tmp_path / "not-started.log").read_text()
+    assert "FileNotFoundError" in (tmp_path / "not-started.log").read_text(encoding="utf-8")
     record = json.loads((tmp_path / "not-started.command.json").read_text())
     assert record["command"] == command
     assert record["returncode"] is None
@@ -109,3 +110,82 @@ def test_upload_copies_only_qa_evidence_and_redacts_credentials(
     for secret in ("private-test-value", "another-secret", "user:pass"):
         assert secret not in uploaded
     assert (tmp_path / "mypy.log").read_text(encoding="utf-8") == raw
+
+
+def test_ci_requires_security_and_real_docker_recovery_without_skipped_success() -> None:
+    workflow = yaml.safe_load((qa.ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    quality = workflow["jobs"]["quality"]
+    assert set(quality["strategy"]["matrix"]["os"]) == {"ubuntu-latest", "windows-latest"}
+    steps = quality["steps"]
+    commands = "\n".join(step.get("run", "") for step in steps)
+    assert "check_public_content.py --history --refs HEAD" in commands
+    assert "-m bandit -c pyproject.toml -r src scripts -ll -ii" in commands
+    assert "-m pip_audit --local" in commands
+    assert "scripts/qa.py coverage" in commands
+    assert "docker image inspect --format '{{.Id}}'" in commands
+    assert "^sha256:[0-9a-f]{64}$" in commands
+    assert 'CORE_RECOVERY_IMAGE=$image_id' in commands
+    roots = []
+    recovery_indexes = []
+    for test in ("test_docker_core_recovery.py", "test_docker_worker_path_boundary.py"):
+        selected = [(index, step) for index, step in enumerate(steps) if test in step.get("run", "")]
+        assert len(selected) == 1
+        index, step = selected[0]
+        recovery_indexes.append(index)
+        assert step["if"] == "runner.os == 'Linux'"
+        assert step["env"]["RUN_CORE_RECOVERY_DOCKER"] == "1"
+        assert not step.get("continue-on-error", False)
+        run = step["run"]
+        assert 'test ! -e "$CORE_RECOVERY_ROOT"' in run
+        assert "len(cases) == 1" in run and "('skipped', 'failure', 'error')" in run
+        assert "result['passed'] is True" in run
+        assert "result['image'] == os.environ['CORE_RECOVERY_IMAGE']" in run
+        roots.append(next(line for line in run.splitlines() if line.startswith("export CORE_RECOVERY_ROOT=")))
+    assert len(set(roots)) == 2
+    assert all("/build/core-recovery/" in root for root in roots)
+    cleanup_index, cleanup = next((index, step) for index, step in enumerate(steps)
+                                  if "orphaned TARS-Agent containers" in step["name"])
+    assert cleanup_index > max(recovery_indexes)
+    assert cleanup["if"] == "runner.os == 'Linux' && always()"
+    assert "exit 1" in cleanup["run"]
+    web_commands = "\n".join(step.get("run", "") for step in workflow["jobs"]["web-e2e"]["steps"])
+    assert "npm audit --audit-level=high" in web_commands
+
+
+def test_ci_independent_install_uses_locked_wheel_and_unchanged_verifier_before_cleanup() -> None:
+    workflow = yaml.safe_load((qa.ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["quality"]["steps"]
+    selected = [(index, step) for index, step in enumerate(steps)
+                if step["name"] == "Verify complete independent wheel installation (Ubuntu)"]
+    assert len(selected) == 1
+    index, step = selected[0]
+    assert step["if"] == "runner.os == 'Linux'" and not step.get("continue-on-error", False)
+    run = step["run"]
+    assert 'case_root="$RUNNER_TEMP/tars-installed-' in run
+    assert 'test ! -e "$case_root"' in run
+    assert "uv export --locked --no-default-groups --no-emit-project" in run
+    assert 'uv pip sync --python "$case_root/venv/bin/python" --require-hashes' in run
+    assert 'uv pip install --python "$case_root/venv/bin/python" --no-deps "${wheels[0]}"' in run
+    assert 'cmp scripts/verify_installed.py "$case_root/verify_installed.py"' in run
+    assert "unset PYTHONPATH PYTHONHOME" in run and 'cd "$case_root"' in run
+    assert "TARS_CONFIG=str(root / 'empty-config.toml')" in run
+    assert "TARS_SANDBOX_MODE='required', TARS_SANDBOX_IMAGE=image" in run
+    assert "'?mode=ro'" in run and "requests == 0" in run
+    for requirement in ("four_entrypoint_help", "schema_resources", "installed_core", "installed_worker",
+                        "installed_web_health", "core_stopped", "core_port_closed", "core_control_removed",
+                        "web_stopped", "web_port_closed"):
+        assert requirement in run
+    cleanup_index = next(index for index, step in enumerate(steps)
+                         if step["name"] == "Assert and remove orphaned TARS-Agent containers")
+    assert index < cleanup_index
+    assert any(step["name"] == "Smoke-test isolated wheel install" and "if" not in step for step in steps)
+
+
+def test_complete_install_evidence_is_sanitized_for_ci_upload(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(qa, "ARTIFACT_ROOT", tmp_path)
+    monkeypatch.setenv("EXAMPLE_API_KEY", "fixture-private-value")
+    result = {"installed_core": "passed", "model_requests": 0, "diagnostic": "fixture-private-value"}
+    (tmp_path / "installed-verification.json").write_text(json.dumps(result), encoding="utf-8")
+    qa.prepare_artifacts()
+    uploaded = json.loads((tmp_path / "upload/installed-verification.json").read_text(encoding="utf-8"))
+    assert uploaded == {"installed_core": "passed", "model_requests": 0, "diagnostic": "[REDACTED]"}

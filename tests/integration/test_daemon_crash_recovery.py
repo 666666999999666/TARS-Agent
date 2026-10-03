@@ -4,7 +4,6 @@ import asyncio
 import os
 import socket
 import subprocess
-import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -13,6 +12,7 @@ import pytest
 
 from tars_agent.core.control import read_control_file
 from tars_agent.core.transport.socket_client import IpcError, SocketClient
+from tests.integration.python_process import python_module_command
 
 
 def _free_port() -> int:
@@ -44,7 +44,7 @@ def _start_daemon(
     if marker is not None:
         env["TARS_CRASH_MARKER"] = str(marker)
     return subprocess.Popen(
-        [sys.executable, "-m", "tests.integration.crash_daemon"],
+        python_module_command("tests.integration.crash_daemon"),
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "suite_id": "tars-deepseek-completion-contract-dev-v1",
+  "name": "DeepSeek completion prompt A/B on the complete AppWorld dev split",
+  "description": "All 57 dev tasks and 19 complete scenarios. One paired observation, not a stable average improvement claim. A/B alternate lead order under the shared train/dev request and 50-CNY cost budget.",
+  "adapter": "appworld",
+  "execution_mode": "agent_tasks",
+  "model_config_ref": {"source": "runtime_config", "reference": "deepseek-flash-official-anthropic-v1", "model": "deepseek-flash"},
+  "default_repetitions": 1,
+  "sandbox_mode": "required",
+  "tasks": [],
+  "appworld": {
+    "data_root": "build/appworld/data-root", "dataset": "dev", "workers": 1,
+    "max_steps": 60, "task_timeout_s": 900, "infrastructure_retries": 1,
+    "paired_comparison": true
+  }
+}

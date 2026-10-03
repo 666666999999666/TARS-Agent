@@ -75,9 +75,13 @@ image = "tars-agent-sandbox:0.8.0"
 
 启动失败先运行 `uv run --no-sync tars sandbox doctor`。默认 required 模式要求 Docker Linux 引擎和镜像可用；首次安装或 worker 改动后运行 `uv run --no-sync tars sandbox build`。Core 启动窗口为 45 秒；超时按命令给出的日志位置排查。
 
+同一数据目录只允许一个 Core。Core 在开放客户端连接前先校验资源归属记录，并回收确认属于它的旧容器；无法查询、记录损坏、归属不明或无法确认清理完成时停止启动。`preferred` 模式也必须完成这一步，不能靠宿主回退绕过启动恢复。旧版没有可信记录的容器不会被自动认领；不同数据目录的实例各自管理自己的记录和容器。
+
 CLI 审批会打印工具名和完整 JSON 参数。通常 `y` 为本次允许，`n` 为拒绝；其他选项以当前提示为准。项目参数变更后必须按新请求决定，非交互输入不能绕过审批。
 
-进入 TUI 后输入任务，Enter 发送，Alt+Enter 换行。斜杠补全菜单出现时，第一次 Enter 选择命令，再按一次 Enter 才执行；例如 `/compact`。审批出现时检查工具名、参数和工作目录。“本次允许”只授权这一次调用；“本会话允许相同参数”不会让变更后的命令自动获得授权。Docker 不可用时，preferred 模式的宿主回退还需要单独审批；默认 required 模式不会回退。
+进入 TUI 后输入任务，Enter 发送，Alt+Enter 换行。斜杠补全菜单出现时，第一次 Enter 选择命令，再按一次 Enter 才执行；例如 `/compact`。审批出现时检查工具名、参数和工作目录，按 `v` 查看可滚动的完整参数；查看不会批准操作，过期请求不能继续批准。“本次允许”只授权这一次调用；“本会话允许相同参数”不会让变更后的命令自动获得授权。Core 已成功启动后，运行期间 `preferred` 模式允许的宿主回退仍需单独审批；默认 `required` 模式不会回退。此运行期规则不改变前面的启动恢复要求。
+
+不存在、非法或无法加载的 `/Skill` 会在保存消息、创建 Run 和调用模型之前拒绝，客户端说明“任务未启动”。提交途中断线造成的结果未知是另一种情况，应先查询会话和 Run，不能把它当作明确拒绝后直接重复提交。
 
 Ctrl+X 取消当前任务。超过 15 秒可能返回 `RUN_CANCEL_TIMEOUT=-32033`，表示取消已请求，但资源清理仍未确认。用 `tars run status <run_id>` 查询后续状态。MCP 外部服务可能已经接受操作，取消本地等待不能保证远端操作撤回。
 
@@ -85,8 +89,8 @@ TUI 的 Ctrl+Q 只退出界面，Core 继续执行。恢复时可以选择 CLI �
 
 ```powershell
 uv run --no-sync tars sessions list
-uv run --no-sync tars chat --resume <session_id>
-uv run --no-sync tars-tui --resume <session_id>
+uv run --no-sync tars chat --resume "<session_id>"
+uv run --no-sync tars-tui --resume "<session_id>"
 ```
 
 上面最后两条是两种恢复方式，任选一种即可。
@@ -153,4 +157,4 @@ SQLite `state.db` 是会话、Run 和持久事件的依据。`artifacts/sessions
 - **诊断文件缺失**：检查日志路径和磁盘权限。日志失败不证明工具没有执行；用 `tars run status <run_id>` 核对运行状态，再检查实际产物。
 - **命令参数报错**：连续对话用 `tars chat [--resume <session_id>]`，一次性任务用 `tars run --goal "任务"`；`tars run status/cancel/metrics` 仍只查询或管理已有 Run，不能和 `--goal` 混用。
 
-当前验证范围见[V1 基准记录](docs/baseline/VERIFICATION_SUMMARY.md)与[已知限制](docs/baseline/LIMITATIONS.md)。[模型配置与请求预算](docs/baseline/MODEL_SETUP.md)说明配置方法。真实模型和工具验收须使用当前明确授权的账号、工作目录及调用额度。
+当前验证范围见[工程验证记录](docs/evaluation/VALIDATION.md)，[V1 基准记录](docs/baseline/VERIFICATION_SUMMARY.md)与[原基准限制](docs/baseline/LIMITATIONS.md)仅说明历史版本。[模型配置与请求预算](docs/baseline/MODEL_SETUP.md)说明通用配置方法；独立 AppWorld 实验使用[专用复现说明](docs/evaluation/REPRODUCE.md)。真实模型和工具验收须使用当前明确授权的账号、工作目录及调用额度。

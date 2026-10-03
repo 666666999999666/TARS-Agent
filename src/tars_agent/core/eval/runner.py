@@ -212,6 +212,8 @@ class EvaluationRunner:
                     guard_timeout = task.timeout_s
                     if self._manifest.execution_mode == "runtime_cases":
                         guard_timeout += 10.0
+                    elif self._manifest.execution_mode == "agent_tasks":
+                        guard_timeout += 120.0
                     async with asyncio.timeout(guard_timeout):
                         attempt = await self._adapter.run_attempt(
                             task,
@@ -275,11 +277,14 @@ def build_adapter(
     config: TarsConfig,
     *,
     repository_root: Path | None = None,
+    artifact_root: Path | None = None,
 ) -> EvalAdapter:
     if manifest.adapter == "internal" and manifest.execution_mode == "agent_tasks":
         from tars_agent.core.eval.internal import InternalEvalAdapter
 
-        return InternalEvalAdapter(config, pricing_snapshot=manifest.pricing_snapshot)
+        return InternalEvalAdapter(
+            config, pricing_snapshot=manifest.pricing_snapshot, artifact_root=artifact_root,
+        )
     if manifest.adapter == "internal" and manifest.execution_mode == "runtime_cases":
         from tars_agent.core.eval.runtime_cases import InternalRuntimeCaseAdapter
 
@@ -299,6 +304,9 @@ async def run_eval_suite(
     root = find_repository_root(repository_root or Path.cwd())
     execution_config = copy.deepcopy(config)
     execution_config.sandbox.mode = manifest.sandbox_mode
+    if manifest.appworld is not None:
+        execution_config.agent.max_steps = manifest.appworld.max_steps
+        execution_config.compaction.auto_threshold = 0
     resolved_artifact_dir = artifact_dir.resolve()
     if resolved_artifact_dir == root or resolved_artifact_dir in root.parents:
         raise ValueError("artifact directory cannot be the repository root or its ancestor")
@@ -325,7 +333,18 @@ async def run_eval_suite(
         },
         exclude=(resolved_artifact_dir,),
     )
-    adapter = build_adapter(manifest, execution_config, repository_root=root)
+    if manifest.adapter == "appworld":
+        from tars_agent.core.eval.appworld import run_appworld_suite
+
+        result = await run_appworld_suite(
+            manifest, execution_config, provenance, resolved_artifact_dir,
+        )
+        write_eval_artifacts(resolved_artifact_dir, manifest, result)
+        return result
+    adapter = build_adapter(
+        manifest, execution_config, repository_root=root,
+        artifact_root=resolved_artifact_dir / "attempts",
+    )
     manifest_snapshot = Path("manifest.json")
     result = await EvaluationRunner(manifest, manifest_snapshot, provenance, adapter).run()
     write_eval_artifacts(resolved_artifact_dir, manifest, result)

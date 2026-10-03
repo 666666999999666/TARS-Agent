@@ -64,6 +64,41 @@ def test_docker_args_apply_security_controls(tmp_path: Path) -> None:
     }
 
 
+@pytest.mark.parametrize("code, stdout, confirmed", [
+    (0, "", True), (0, "a" * 64 + "\n", False), (124, "", None), (0, "short-id", None),
+])
+async def test_cleanup_confirmation_requires_a_separate_exact_instance_query(
+    monkeypatch: pytest.MonkeyPatch, code: int, stdout: str, confirmed: bool | None,
+) -> None:
+    runtime = DockerRuntime(SandboxConfig())
+    commands: list[list[str]] = []
+
+    async def command(args, *, timeout_s=None):
+        commands.append(args)
+        assert args[1] == "ps" and "--no-trunc" in args
+        assert args[-1] == f"label=com.tars-agent.instance={runtime._instance_id}"
+        return code, stdout, "injected query failure" if code else ""
+
+    monkeypatch.setattr(runtime, "_command", command)
+    await runtime.cleanup()
+    assert commands == []  # cleanup returning does not constitute the query.
+    result = await runtime.confirm_cleanup()
+    assert result.confirmed is confirmed
+    assert result.source == "docker_instance_inventory"
+    assert result.scope_id == runtime._instance_id
+    assert len(commands) == 1
+
+
+async def test_router_does_not_treat_missing_confirmation_interface_as_empty() -> None:
+    class LegacyRuntime:
+        async def cleanup(self):
+            return None
+
+    router = RuntimeRouter(LegacyRuntime(), allow_host_fallback=False)
+    result = await router.confirm_cleanup()
+    assert result.confirmed is None and result.reason == "runtime_has_no_cleanup_query"
+
+
 @pytest.mark.parametrize(
     ("run_code", "run_stdout"),
     ((124, ""), (1, ""), (0, "")),
